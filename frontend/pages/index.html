@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="home.page_title">Substack - Nền tảng Đọc & Viết Blog Độc Lập</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#121212',
+                        sidebarBg: '#181818',
+                        cardBg: '#1e1e1e',
+                        substackOrange: '#ff6719',
+                        substackOrangeHover: '#e05b15',
+                        borderDark: '#2a2a2a'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-darkBg text-gray-200 min-h-screen flex flex-col relative pb-16 md:pb-0">
+
+    <!-- Header dùng chung -->
+    <header id="appHeader"></header>
+
+    <!-- Khung giao diện chính -->
+    <div class="flex flex-1 w-full">
+        
+        <!-- Sidebar trái -->
+        <aside id="appSidebar"></aside>
+
+        <!-- Nội dung chính giữa -->
+        <main class="flex-1 px-3 sm:px-6 py-5 max-w-2xl w-full">
+            
+            <!-- Banner dành riêng cho Guest -->
+            <div id="homeGuestBanner" class="bg-gradient-to-r from-emerald-900/80 via-emerald-800/80 to-teal-900/80 border border-emerald-600/30 rounded-2xl p-5 sm:p-6 text-center text-white mb-6 shadow-xl relative overflow-hidden hidden">
+                <div class="relative z-10">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-2" data-i18n="banner.title">Kiếm tiền từ công việc bạn tin tưởng</h2>
+                    <p class="text-xs sm:text-sm text-emerald-100 max-w-md mx-auto mb-4" data-i18n="banner.subtitle">Tham gia cộng đồng tác giả và độc giả tri thức chất lượng cao hàng đầu.</p>
+                    <div class="flex items-center justify-center gap-3">
+                        <a href="register.html" class="bg-substackOrange hover:bg-substackOrangeHover text-white font-medium px-5 py-2 rounded-full transition shadow text-sm" data-i18n="home.start_writing">
+                            Bắt đầu viết trên Substack
+                        </a>
+                        <button onclick="Layout.openAuthModal()" class="bg-cardBg/80 hover:bg-cardBg text-white font-medium px-5 py-2 rounded-full transition border border-borderDark text-sm" data-i18n="header.login">
+                            Đăng nhập
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ô đăng bài nhanh cho Blogger / Admin -->
+            <div id="quickCreateBox" class="bg-sidebarBg border border-borderDark rounded-2xl p-3.5 mb-6 hidden items-center space-x-3 shadow">
+                <img id="quickUserAvatar" src="https://i.pravatar.cc/150?u=hhoanganh0710" alt="Avatar" class="w-9 h-9 rounded-full object-cover border border-borderDark">
+                <div onclick="window.location.href='post-editor.html?new=true'" class="flex-1 bg-darkBg border border-borderDark hover:border-gray-500 rounded-full px-4 py-2 text-gray-400 text-xs sm:text-sm cursor-pointer transition" data-i18n="home.quick_placeholder">
+                    Bạn đang nghĩ gì? Viết ghi chú hoặc bài viết mới...
+                </div>
+                <a href="post-editor.html?new=true" class="bg-substackOrange hover:bg-substackOrangeHover text-white p-2 sm:px-3 sm:py-2 rounded-full transition text-xs flex items-center space-x-1" data-i18n-title="home.compose_title" title="Soạn bài viết">
+                    <i class="fa-solid fa-pen"></i>
+                    <span class="hidden sm:inline" data-i18n="home.compose">Soạn thảo</span>
+                </a>
+            </div>
+
+            <!-- Thanh lọc theo Thẻ Tags -->
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400" data-i18n="home.discover_topics">Chủ đề khám phá:</span>
+                    <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.filter_all">Tất cả chủ đề</a>
+                </div>
+                <div id="tagFilterBar" class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+                    <button onclick="filterByTag('all')" data-tag-slug="all" class="px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition" data-i18n="common.all">
+                        Tất cả
+                    </button>
+                    <!-- Danh sách chip tag sẽ được render qua JS -->
+                </div>
+            </div>
+
+            <!-- Thanh lọc theo Danh mục -->
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400" data-i18n="home.categories_label">Danh mục:</span>
+                    <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.view_all">Xem tất cả</a>
+                </div>
+                <div id="categoryFilterBar" class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+                    <!-- Render danh mục đang hoạt động qua JS -->
+                </div>
+            </div>
+
+            <!-- Vùng hiển thị bài viết (Hỗ trợ 4 trạng thái) -->
+            <div id="postListContainer" class="space-y-6">
+                <!-- Nội dung động qua JavaScript -->
+            </div>
+
+            <!-- Phân trang -->
+            <div id="paginationBar"></div>
+
+        </main>
+
+        <!-- Sidebar phải -->
+        <aside class="w-80 p-4 hidden lg:block sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto space-y-6">
+            
+            <!-- Ô tìm kiếm nhanh -->
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" onkeydown="if(event.key==='Enter') window.location.href='search.html?q='+encodeURIComponent(this.value)" data-i18n-placeholder="home.sidebar_search" placeholder="Tìm kiếm bài viết..." class="w-full bg-sidebarBg border border-borderDark rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-substackOrange transition">
+            </div>
+
+            <!-- Khối Đọc Nhiều (Popular stories) -->
+            <div class="bg-sidebarBg border border-borderDark rounded-2xl p-4 shadow-sm">
+                <div class="flex items-center space-x-2 mb-3 border-b border-borderDark pb-2.5">
+                    <i class="fa-solid fa-fire text-substackOrange text-sm"></i>
+                    <h3 class="font-bold text-sm text-white" data-i18n="common.popular">Đọc nhiều nhất</h3>
+                </div>
+                <div id="popularPostsList" class="space-y-3.5">
+                    <!-- Render động qua JS -->
+                </div>
+            </div>
+
+            <!-- Tác giả tiêu biểu / Gợi ý follow -->
+            <div class="bg-sidebarBg border border-borderDark rounded-2xl p-4 shadow-sm">
+                <div class="flex items-center justify-between mb-3 border-b border-borderDark pb-2">
+                    <h3 class="font-bold text-sm text-white" data-i18n="home.authors_title">Tác giả đề xuất</h3>
+                    <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.view_all">Xem thêm</a>
+                </div>
+                <div id="recommendedAuthorsList" class="space-y-3">
+                    <!-- Render động qua JS -->
+                </div>
+            </div>
+
+        </aside>
+
+    </div>
+
+    <!-- Bottom Nav Mobile -->
+    <nav id="appBottomNav"></nav>
+
+    <!-- Nạp dữ liệu & Script điều khiển -->
+    <script src="../assets/js/mock-data.js"></script>
+    <script src="../assets/js/i18n.js"></script>
+    <script src="../assets/js/pagination.js"></script>
+    <script src="../assets/js/sanitize.js"></script>
+    <script src="../assets/js/layout.js"></script>
+
+    <script>
+        let currentSelectedTag = 'all';
+        let currentSelectedCategory = 'all';
+
+        // Khởi tạo trang chủ
+        document.addEventListener('DOMContentLoaded', () => {
+            I18n.ready(() => {
+                Layout.renderHeader('appHeader');
+                Layout.renderSidebar('home', 'appSidebar');
+                Layout.renderBottomNav('home', 'appBottomNav');
+
+                initRoleUI();
+                renderTagFilterChips();
+                renderCategoryFilterChips();
+                renderHomeContent();
+                renderPopularPosts();
+                renderRecommendedAuthors();
+            });
+
+            // Lắng nghe đổi state từ thanh demo
+            window.addEventListener('demoStateChanged', () => {
+                renderHomeContent();
+            });
+        });
+
+        function initRoleUI() {
+            const role = Layout.getDemoRole();
+            const user = Layout.getCurrentUser();
+            const guestBanner = document.getElementById('homeGuestBanner');
+            const quickBox = document.getElementById('quickCreateBox');
+
+            if (role === 'guest') {
+                guestBanner.classList.remove('hidden');
+                quickBox.classList.add('hidden');
+            } else if (role === 'blogger' || role === 'admin') {
+                guestBanner.classList.add('hidden');
+                quickBox.classList.remove('hidden');
+                quickBox.classList.add('flex');
+                if (user?.avatar_url) {
+                    document.getElementById('quickUserAvatar').src = user.avatar_url;
+                }
+            } else {
+                // Vai trò User (độc giả thông thường - không có quyền đăng bài)
+                guestBanner.classList.add('hidden');
+                quickBox.classList.add('hidden');
+            }
+        }
+
+        function renderTagFilterChips() {
+            const container = document.getElementById('tagFilterBar');
+            if (!container || !MockData.tags) return;
+
+            const tagsHTML = MockData.tags.map(t => `
+                <button onclick="filterByTag('${t.slug}')" data-tag-slug="${t.slug}" class="px-3 py-1.5 rounded-full border border-borderDark bg-cardBg hover:border-substackOrange text-gray-300 font-medium whitespace-nowrap transition">
+                    # ${Layout.escapeHtml(t.name)}
+                </button>
+            `).join('');
+
+            container.innerHTML = `
+                <button onclick="filterByTag('all')" data-tag-slug="all" class="px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition">
+                    ${I18n.t('common.filter_all')}
+                </button>
+                ${tagsHTML}
+            `;
+        }
+
+        function filterByTag(slug) {
+            currentSelectedTag = slug;
+
+            // Đưa phân trang về trang 1 khi đổi bộ lọc
+            const url = new URL(window.location.href);
+            url.searchParams.delete('page');
+            window.history.replaceState({}, '', url.toString());
+
+            // Highlight button
+            document.querySelectorAll('#tagFilterBar button').forEach(btn => {
+                if (btn.getAttribute('data-tag-slug') === slug) {
+                    btn.className = "px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-full border border-borderDark bg-cardBg hover:border-substackOrange text-gray-300 font-medium whitespace-nowrap transition";
+                }
+            });
+
+            renderHomeContent();
+        }
+
+        function categoryChipClass(slug) {
+            return slug === currentSelectedCategory
+                ? 'px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition'
+                : 'px-3 py-1.5 rounded-full border border-borderDark bg-cardBg hover:border-substackOrange text-gray-300 font-medium whitespace-nowrap transition';
+        }
+
+        function renderCategoryFilterChips() {
+            const container = document.getElementById('categoryFilterBar');
+            if (!container || !MockData.categories) return;
+
+            const activeCategories = MockData.categories.filter(c => c.is_active);
+            container.innerHTML = `
+                <button onclick="filterByCategory('all')" data-cat-slug="all" class="${categoryChipClass('all')}">
+                    <i class="fa-solid fa-layer-group mr-1"></i>${Layout.escapeHtml(I18n.t('common.all_categories'))}
+                </button>
+                ${activeCategories.map(c => `
+                    <button onclick="filterByCategory('${c.slug}')" data-cat-slug="${c.slug}" class="${categoryChipClass(c.slug)}">
+                        ${Layout.escapeHtml(c.name)}
+                    </button>
+                `).join('')}
+            `;
+        }
+
+        function filterByCategory(slug) {
+            currentSelectedCategory = slug;
+
+            const url = new URL(window.location.href);
+            url.searchParams.delete('page');
+            window.history.replaceState({}, '', url.toString());
+
+            renderCategoryFilterChips();
+            renderHomeContent();
+        }
+
+        function renderHomeContent() {
+            const state = Layout.getDemoState();
+            const container = document.getElementById('postListContainer');
+            const paginationBar = document.getElementById('paginationBar');
+            const currentLangCode = I18n.getCurrentLang();
+            const langObj = MockData.languages.find(l => l.code === currentLangCode);
+            const currentLangId = langObj ? langObj.id : 1;
+
+            // 1. TRẠNG THÁI LOADING (Skeleton)
+            if (state === 'loading') {
+                paginationBar.classList.add('hidden');
+                container.innerHTML = Array(3).fill(0).map(() => `
+                    <div class="bg-sidebarBg border border-borderDark rounded-2xl p-5 space-y-4 animate-pulse">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 bg-borderDark rounded-full"></div>
+                            <div class="space-y-2">
+                                <div class="w-28 h-3 bg-borderDark rounded"></div>
+                                <div class="w-16 h-2 bg-borderDark rounded"></div>
+                            </div>
+                        </div>
+                        <div class="w-3/4 h-5 bg-borderDark rounded"></div>
+                        <div class="w-full h-16 bg-borderDark rounded"></div>
+                        <div class="w-full h-40 bg-borderDark rounded-xl"></div>
+                    </div>
+                `).join('');
+                return;
+            }
+
+            // 2. TRẠNG THÁI LỖI (Error)
+            if (state === 'error') {
+                paginationBar.classList.add('hidden');
+                container.innerHTML = `
+                    <div class="bg-sidebarBg border border-rose-900/40 rounded-2xl p-8 text-center space-y-4">
+                        <div class="w-12 h-12 bg-rose-950/60 text-rose-500 rounded-full flex items-center justify-center mx-auto text-xl">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-white">${I18n.t('home.error_title')}</h3>
+                        <p class="text-xs text-gray-400 max-w-sm mx-auto">${I18n.t('home.error_desc')}</p>
+                        <button onclick="Layout.setDemoState('normal')" class="bg-substackOrange hover:bg-substackOrangeHover text-white text-xs font-semibold px-5 py-2 rounded-lg transition shadow">
+                            <i class="fa-solid fa-rotate-right mr-1.5"></i> ${I18n.t('common.retry')}
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Lấy danh sách bài viết theo status 'published' và theo language_id
+            let posts = MockData.posts.filter(p => p.status === 'published' && !p.deleted_at);
+
+            // 3. TRẠNG THÁI RỖNG (Empty do Demo hoặc lọc không ra)
+            if (state === 'empty') {
+                posts = [];
+            } else {
+                // Lọc theo ngôn ngữ
+                posts = posts.filter(p => p.language_id === currentLangId);
+
+                // Lọc theo tag nếu có
+                if (currentSelectedTag !== 'all') {
+                    const matchedTag = MockData.tags.find(t => t.slug === currentSelectedTag);
+                    if (matchedTag) {
+                        const postIdsWithTag = MockData.post_tags.filter(pt => pt.tag_id === matchedTag.id).map(pt => pt.post_id);
+                        posts = posts.filter(p => postIdsWithTag.includes(p.id));
+                    }
+                }
+
+                // Lọc theo danh mục đang hoạt động
+                if (currentSelectedCategory !== 'all') {
+                    const matchedCategory = MockData.categories.find(c => c.slug === currentSelectedCategory && c.is_active);
+                    if (matchedCategory) {
+                        posts = posts.filter(p => p.category_id === matchedCategory.id);
+                    }
+                }
+            }
+
+            if (posts.length === 0) {
+                paginationBar.classList.add('hidden');
+                container.innerHTML = `
+                    <div class="bg-sidebarBg border border-borderDark rounded-2xl p-10 text-center space-y-3">
+                        <div class="w-14 h-14 bg-borderDark/60 text-gray-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+                            <i class="fa-regular fa-folder-open"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-white" data-i18n="home.empty_title">Chưa có bài viết nào ở ngôn ngữ này</h3>
+                        <p class="text-xs text-gray-400 max-w-sm mx-auto" data-i18n="home.empty_hint">Hãy đổi sang ngôn ngữ khác ở góc trên hoặc chọn bộ lọc "Tất cả chủ đề" để khám phá thêm nội dung.</p>
+                        <button onclick="Layout.toggleLangDropdown(event)" class="mt-2 inline-flex items-center space-x-1.5 text-xs text-substackOrange font-medium hover:underline">
+                            <i class="fa-solid fa-globe"></i>
+                            <span data-i18n="home.empty_action">Đổi ngôn ngữ</span>
+                        </button>
+                    </div>
+                `;
+                I18n.applyI18n(container);
+                return;
+            }
+
+            // 4. TRẠNG THÁI BÌNH THƯỜNG (Normal) có dữ liệu + Phân trang dùng chung
+            paginationBar.classList.remove('hidden');
+            Pagination.render({
+                container: paginationBar,
+                items: posts,
+                pageSize: 10,
+                pageSizeOptions: [10, 20, 50],
+                syncUrl: true,
+                onPageChange: (paginatedPosts) => {
+                    renderPostsCards(paginatedPosts, container);
+                }
+            });
+        }
+
+        function renderPostsCards(paginatedPosts, container) {
+            container.innerHTML = paginatedPosts.map(post => {
+                const author = MockData.users.find(u => u.id === post.author_id) || {
+                    display_name: I18n.t('common.author'),
+                    handle: 'author',
+                    avatar_url: 'https://i.pravatar.cc/150'
+                };
+
+                // Lấy tags của post
+                const postTagIds = MockData.post_tags.filter(pt => pt.post_id === post.id).map(pt => pt.tag_id);
+                const postTags = MockData.tags.filter(t => postTagIds.includes(t.id));
+                const postCategory = post.category_id ? MockData.getCategoryById(post.category_id) : null;
+                const excerpt = Sanitize.text(post.content_html || '');
+
+                // Đếm phản hồi & bình luận
+                const commentCount = MockData.comments.filter(c => c.post_id === post.id && !c.deleted_at).length;
+                const reactionCount = MockData.reactions.filter(r => r.target_type === 'post' && r.post_id === post.id).length;
+                const currentUser = Layout.getCurrentUser();
+                const likedByMe = !!currentUser && MockData.reactions.some(r =>
+                    r.target_type === 'post' && r.post_id === post.id && r.user_id === currentUser.id && r.type === 'like'
+                );
+
+                return `
+                    <article class="bg-sidebarBg border border-borderDark hover:border-gray-600 rounded-2xl p-4 sm:p-5 transition shadow-sm">
+                        <!-- Tác giả & Hành động theo dõi -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-3">
+                                <a href="profile.html?handle=${encodeURIComponent(author.handle)}">
+                                    <img src="${Layout.escapeHtml(author.avatar_url)}" alt="${Layout.escapeHtml(author.display_name)}" class="w-10 h-10 rounded-full object-cover border border-borderDark">
+                                </a>
+                                <div>
+                                    <div class="flex items-center space-x-1.5">
+                                        <a href="profile.html?handle=${encodeURIComponent(author.handle)}" class="font-bold text-sm text-white hover:text-substackOrange transition line-clamp-1">
+                                            ${Layout.escapeHtml(author.display_name)}
+                                        </a>
+                                        <span class="text-xs text-gray-500">•</span>
+                                        <span class="text-xs text-gray-400">@${Layout.escapeHtml(author.handle)}</span>
+                                    </div>
+                                    <span class="text-[11px] text-gray-500">${Layout.formatDate(post.published_at)}</span>
+                                </div>
+                            </div>
+                            <button onclick="toggleFollowAuthor(${author.id}, this)" class="bg-cardBg hover:bg-borderDark border border-borderDark text-substackOrange text-xs font-semibold px-3 py-1 rounded-full transition">
+                                ${I18n.t('common.follow')}
+                            </button>
+                        </div>
+
+                        <!-- Tiêu đề & Tóm tắt -->
+                        <div class="space-y-2 mb-3 cursor-pointer" onclick="window.location.href='post-detail.html?slug=${encodeURIComponent(post.slug)}'">
+                            <h2 class="text-base sm:text-lg font-bold text-white hover:text-substackOrange transition leading-snug line-clamp-2">
+                                ${Layout.escapeHtml(post.title)}
+                            </h2>
+                            <div class="text-xs sm:text-sm text-gray-300 line-clamp-2 leading-relaxed">
+                                ${Layout.escapeHtml(excerpt)}
+                            </div>
+                        </div>
+
+                        <!-- Ảnh bìa nếu có -->
+                        ${post.cover_image ? `
+                            <div class="rounded-xl overflow-hidden mb-3 aspect-video max-h-64 cursor-pointer" onclick="window.location.href='post-detail.html?slug=${encodeURIComponent(post.slug)}'">
+                                <img src="${Layout.escapeHtml(post.cover_image)}" alt="${Layout.escapeHtml(post.title)}" class="w-full h-full object-cover hover:scale-102 transition duration-300">
+                            </div>
+                        ` : ''}
+
+                        <!-- Thẻ Tags & Tương tác -->
+                        <div class="flex flex-wrap items-center justify-between pt-2 border-t border-borderDark gap-2 text-xs text-gray-400">
+                            <div class="flex items-center space-x-2 flex-wrap">
+                                ${postCategory ? `
+                                    <a href="search.html?category=${encodeURIComponent(postCategory.slug)}" class="bg-substackOrange/15 hover:bg-substackOrange/25 text-substackOrange px-2.5 py-1 rounded-full text-[11px] border border-substackOrange/40 font-semibold">
+                                        <i class="fa-regular fa-folder-open mr-1"></i>${Layout.escapeHtml(postCategory.name)}
+                                    </a>
+                                ` : ''}
+                                ${postTags.map(t => `
+                                    <a href="tag.html?slug=${encodeURIComponent(t.slug)}" class="bg-darkBg hover:bg-borderDark text-gray-300 px-2.5 py-1 rounded-full text-[11px] border border-borderDark">
+                                        # ${Layout.escapeHtml(t.name)}
+                                    </a>
+                                `).join('')}
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <button type="button" class="flex items-center space-x-1 cursor-pointer transition ${likedByMe ? 'text-rose-500' : 'hover:text-white'}" onclick="handleReaction(${post.id})">
+                                    <i class="${likedByMe ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
+                                    <span>${reactionCount}</span>
+                                </button>
+                                <a href="post-detail.html?slug=${encodeURIComponent(post.slug)}#comments" class="flex items-center space-x-1 hover:text-white">
+                                    <i class="fa-regular fa-comment"></i>
+                                    <span>${commentCount}</span>
+                                </a>
+                                <span class="flex items-center space-x-1 text-gray-500">
+                                    <i class="fa-regular fa-eye"></i>
+                                    <span>${Layout.formatNumber(post.views_count)}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function toggleFollowAuthor(authorId, btn) {
+            Layout.requireAuth(() => {
+                if (btn.classList.contains('followed')) {
+                    btn.classList.remove('followed', 'bg-substackOrange', 'text-white');
+                    btn.classList.add('bg-cardBg', 'text-substackOrange');
+                    btn.textContent = I18n.t('common.follow');
+                    Layout.showToast(I18n.t('home.unfollow_success'), 'info');
+                } else {
+                    btn.classList.add('followed', 'bg-substackOrange', 'text-white');
+                    btn.classList.remove('bg-cardBg', 'text-substackOrange');
+                    btn.textContent = I18n.t('common.following');
+                    Layout.showToast(I18n.t('home.follow_success'), 'success');
+                }
+            });
+        }
+
+        function handleReaction(postId) {
+            Layout.requireAuth(() => {
+                const currentUser = Layout.getCurrentUser();
+                if (!currentUser) return;
+
+                const reactions = MockData.reactions;
+                const existingIndex = reactions.findIndex(r =>
+                    r.target_type === 'post' && r.post_id === postId &&
+                    r.user_id === currentUser.id && r.type === 'like'
+                );
+
+                // Toggle reaction tại chỗ (optimistic update), KHÔNG hiển thị toast
+                if (existingIndex !== -1) {
+                    reactions.splice(existingIndex, 1);
+                } else {
+                    reactions.push({
+                        user_id: currentUser.id,
+                        target_type: 'post',
+                        post_id: postId,
+                        note_id: null,
+                        comment_id: null,
+                        type: 'like'
+                    });
+                }
+                renderHomeContent();
+            });
+        }
+
+        function renderPopularPosts() {
+            const container = document.getElementById('popularPostsList');
+            if (!container) return;
+
+            const popular = [...MockData.posts]
+                .filter(p => p.status === 'published' && !p.deleted_at)
+                .sort((a, b) => b.views_count - a.views_count)
+                .slice(0, 4);
+
+            container.innerHTML = popular.map((p, idx) => `
+                <div class="flex items-start space-x-3 cursor-pointer group" onclick="window.location.href='post-detail.html?slug=${encodeURIComponent(p.slug)}'">
+                    <span class="text-base font-extrabold text-gray-600 group-hover:text-substackOrange transition">0${idx + 1}</span>
+                    <div class="flex-1">
+                        <h4 class="text-xs font-semibold text-white group-hover:text-substackOrange transition line-clamp-2 leading-snug">
+                            ${Layout.escapeHtml(p.title)}
+                        </h4>
+                        <span class="text-[10px] text-gray-500 mt-0.5 block">${I18n.t('home.views', { count: Layout.formatNumber(p.views_count) })}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRecommendedAuthors() {
+            const container = document.getElementById('recommendedAuthorsList');
+            if (!container) return;
+
+            const authors = MockData.users.filter(u => (u.role_id === 2 || u.role_id === 1) && u.is_active).slice(0, 3);
+            container.innerHTML = authors.map(u => `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5 cursor-pointer truncate mr-2" onclick="window.location.href='profile.html?handle=${encodeURIComponent(u.handle)}'">
+                        <img src="${Layout.escapeHtml(u.avatar_url)}" alt="${Layout.escapeHtml(u.display_name)}" class="w-8 h-8 rounded-full object-cover border border-borderDark flex-shrink-0">
+                        <div class="truncate">
+                            <p class="text-xs font-bold text-white truncate hover:underline">${Layout.escapeHtml(u.display_name)}</p>
+                            <p class="text-[11px] text-gray-400 truncate">@${Layout.escapeHtml(u.handle)}</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleFollowAuthor(${u.id}, this)" class="bg-borderDark hover:bg-gray-700 text-substackOrange text-[11px] font-semibold px-2.5 py-1 rounded-full transition flex-shrink-0">
+                        ${I18n.t('common.follow')}
+                    </button>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

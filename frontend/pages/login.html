@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="login.page_title">Đăng nhập | Substack</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#121212',
+                        sidebarBg: '#181818',
+                        cardBg: '#1e1e1e',
+                        substackOrange: '#ff6719',
+                        substackOrangeHover: '#e05b15',
+                        borderDark: '#2a2a2a'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-darkBg text-gray-200 min-h-screen flex flex-col justify-between p-4">
+
+    <!-- Top nav tối giản -->
+    <header class="max-w-4xl mx-auto w-full flex items-center justify-between py-4">
+        <a href="index.html" class="text-substackOrange text-2xl font-bold flex items-center space-x-2">
+            <i class="fa-solid fa-book-bookmark"></i>
+            <span class="text-white text-base tracking-tight font-extrabold">Substack</span>
+        </a>
+        <div class="flex items-center space-x-3 text-xs">
+            <span data-i18n="auth.no_account">Chưa có tài khoản?</span>
+            <a href="register.html" class="text-substackOrange font-semibold hover:underline" data-i18n="auth.register_now">Đăng ký ngay</a>
+        </div>
+    </header>
+
+    <!-- Main Card -->
+    <main class="w-full max-w-md mx-auto my-auto py-6">
+        <div class="bg-sidebarBg border border-borderDark rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-substackOrange/10 border border-substackOrange/30 text-substackOrange rounded-2xl flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white tracking-tight" data-i18n="login.heading">Đăng nhập vào tài khoản</h1>
+                <p class="text-xs text-gray-400" data-i18n="login.subheading">Tham gia không gian đọc và viết độc lập chất lượng cao</p>
+            </div>
+
+            <!-- Thông báo khi được chuyển từ trang cần đăng nhập -->
+            <div id="loginRedirectNotice" class="hidden p-3 rounded-xl border border-substackOrange/30 bg-substackOrange/10 text-[11px] text-orange-200 items-center space-x-2">
+                <i class="fa-solid fa-lock"></i>
+                <span data-i18n="login.redirect_notice">Vui lòng đăng nhập để tiếp tục.</span>
+            </div>
+
+            <!-- Banner Thông Báo Lỗi (Sai thông tin hoặc Tài khoản bị Ban) -->
+            <div id="loginErrorAlert" class="hidden p-4 rounded-xl border text-xs space-y-1">
+                <div class="flex items-center space-x-2 font-bold" id="errorTitle"></div>
+                <div id="errorDesc" class="leading-relaxed"></div>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5" data-i18n="auth.email">Địa chỉ Email</label>
+                    <input type="text" id="emailInput" name="emailInput" placeholder="name@example.com" class="w-full bg-darkBg border border-borderDark rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-substackOrange transition">
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="text-xs font-semibold text-gray-300" data-i18n="auth.password">Mật khẩu</label>
+                        <a href="#" onclick="Layout.showToast(I18n.t('login.forgot_toast'), 'info')" class="text-xs text-substackOrange hover:underline" data-i18n="login.forgot">Quên mật khẩu?</a>
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="passwordInput" name="passwordInput" placeholder="••••••••" class="w-full bg-darkBg border border-borderDark rounded-xl pl-4 pr-11 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-substackOrange transition">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3.5 top-3 text-gray-400 hover:text-white text-sm" data-i18n-title="login.hide_password" title="Hiện/Ẩn mật khẩu">
+                            <i id="passwordEyeIcon" class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="rememberMe" checked class="rounded bg-darkBg border-borderDark text-substackOrange">
+                        <span data-i18n="login.remember">Ghi nhớ đăng nhập</span>
+                    </label>
+                </div>
+
+                <button type="submit" id="loginSubmitBtn" class="w-full bg-substackOrange hover:bg-substackOrangeHover disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition shadow-lg text-xs sm:text-sm" data-i18n="login.submit">
+                    Đăng nhập ngay
+                </button>
+            </form>
+
+            <!-- Hộp chọn nhanh tài khoản thử nghiệm -->
+            <div class="pt-4 border-t border-borderDark space-y-2">
+                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block text-center" data-i18n="login.quick_accounts">Hoặc chọn nhanh tài khoản thử:</span>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button onclick="fillDemoAccount('blogger')" class="bg-cardBg hover:bg-borderDark border border-borderDark p-2 rounded-xl text-left transition">
+                        <p class="font-bold text-white text-[11px]" data-i18n="login.account_blogger">Blogger Hoàng Anh</p>
+                        <p class="text-[10px] text-gray-400 truncate">hhoanganh0710@...</p>
+                    </button>
+                    <button onclick="fillDemoAccount('admin')" class="bg-cardBg hover:bg-borderDark border border-borderDark p-2 rounded-xl text-left transition">
+                        <p class="font-bold text-white text-[11px]" data-i18n="login.account_admin">Admin Quản Trị</p>
+                        <p class="text-[10px] text-gray-400 truncate">admin@substack.vn</p>
+                    </button>
+                    <button onclick="fillDemoAccount('user')" class="bg-cardBg hover:bg-borderDark border border-borderDark p-2 rounded-xl text-left transition">
+                        <p class="font-bold text-white text-[11px]" data-i18n="login.account_user">User Đặng Mai Hoa</p>
+                        <p class="text-[10px] text-gray-400 truncate">dangmaihoa@...</p>
+                    </button>
+                    <button onclick="fillDemoAccount('banned')" class="bg-red-950/40 hover:bg-red-950/60 border border-red-500/40 p-2 rounded-xl text-left transition">
+                        <p class="font-bold text-red-300 text-[11px]" data-i18n="login.account_banned">Tài khoản bị Ban</p>
+                        <p class="text-[10px] text-red-400 truncate">quangcao.spammer247@...</p>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-4xl mx-auto w-full text-center text-xs text-gray-500 py-4" data-i18n="auth.footer">
+        Substack Clone © 2026. Mọi quyền được bảo lưu.
+    </footer>
+
+    <!-- Script & Mock Data -->
+    <script src="../assets/js/mock-data.js"></script>
+    <script src="../assets/js/i18n.js"></script>
+    <script src="../assets/js/validators.js"></script>
+    <script src="../assets/js/layout.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            I18n.ready(() => {
+                // Mặc định điền sẵn tài khoản blogger để dễ test
+                fillDemoAccount('blogger');
+
+                // Hiển thị nhắc nhở nếu người dùng bị chặn từ trang cần đăng nhập
+                if (Layout.getRedirectParam()) {
+                    document.getElementById('loginRedirectNotice').classList.remove('hidden');
+                    document.getElementById('loginRedirectNotice').classList.add('flex');
+                }
+
+                // Bổ sung nút mô phỏng lỗi riêng vào thanh Demo
+                setupPageDemoControls();
+
+                // Gắn Validation dùng chung
+                Validators.attach('#loginForm', {
+                    emailInput: {
+                        required: true,
+                        email: true,
+                        noHtml: true
+                    },
+                    passwordInput: {
+                        required: true,
+                        minLength: 6,
+                        noHtml: true
+                    }
+                }, {
+                    onSubmit: (values) => {
+                        executeLogin(values.emailInput, values.passwordInput);
+                    }
+                });
+            });
+        });
+
+        function setupPageDemoControls() {
+            const container = document.getElementById('pageCustomDemoControls');
+            if (!container) return;
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <label class="block text-gray-400 text-[11px] mb-1.5 font-medium">${I18n.t('login.demo_label')}</label>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button onclick="simulateLoginError('wrong_credentials')" class="py-1 px-2 rounded bg-cardBg hover:bg-borderDark border border-borderDark text-amber-400 text-left text-[10px]">
+                        ${I18n.t('login.demo_wrong')}
+                    </button>
+                    <button onclick="simulateLoginError('banned_user')" class="py-1 px-2 rounded bg-red-950/50 hover:bg-red-900 border border-red-500/50 text-red-300 text-left text-[10px]">
+                        ${I18n.t('login.demo_banned')}
+                    </button>
+                </div>
+            `;
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('passwordInput');
+            const icon = document.getElementById('passwordEyeIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-regular fa-eye-slash text-substackOrange';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-regular fa-eye';
+            }
+        }
+
+        function fillDemoAccount(type) {
+            const emailInput = document.getElementById('emailInput');
+            const passInput = document.getElementById('passwordInput');
+            hideError();
+            Validators.clearError(emailInput);
+            Validators.clearError(passInput);
+
+            if (type === 'blogger') {
+                emailInput.value = 'hhoanganh0710@gmail.com';
+                passInput.value = '12345678';
+            } else if (type === 'admin') {
+                emailInput.value = 'admin@substack.vn';
+                passInput.value = 'admin123';
+            } else if (type === 'user') {
+                emailInput.value = 'dangmaihoa@gmail.com';
+                passInput.value = 'user123';
+            } else if (type === 'banned') {
+                emailInput.value = 'quangcao.spammer247@gmail.com';
+                passInput.value = 'spammer123';
+            }
+        }
+
+        // Gọi API backend mock (nếu đang chạy) để lấy token; lỗi/CORS/timeout -> trả null
+        async function requestBackendLogin(email, password) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 1500);
+                const res = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data && data.success ? data : null;
+            } catch (error) {
+                // Backend chưa chạy hoặc bị CORS -> fallback MockData
+                return null;
+            }
+        }
+
+        function setLoginLoading(isLoading) {
+            const btn = document.getElementById('loginSubmitBtn');
+            btn.disabled = isLoading;
+            btn.innerHTML = isLoading
+                ? `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>${I18n.t('login.submitting')}`
+                : I18n.t('login.submit');
+        }
+
+        function showPasswordError(messageKey) {
+            Validators.showError(document.getElementById('passwordInput'), I18n.t(messageKey));
+            document.getElementById('passwordInput').focus();
+            document.getElementById('passwordInput').select();
+        }
+
+        async function executeLogin(emailVal, passVal) {
+            const email = (emailVal || document.getElementById('emailInput').value).trim();
+            const password = (passVal || document.getElementById('passwordInput').value).trim();
+            const passwordInput = document.getElementById('passwordInput');
+
+            hideError();
+            Validators.clearError(passwordInput);
+
+            setLoginLoading(true);
+            const apiData = await requestBackendLogin(email, password);
+
+            // MockData là nguồn dữ liệu chuẩn cho demo -> kiểm tra mật khẩu & trạng thái ban
+            const user = MockData.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+            if (!user) {
+                setLoginLoading(false);
+                Validators.showError(document.getElementById('emailInput'), I18n.t('login.error_email_not_found'));
+                showError(I18n.t('login.error_wrong_title'), I18n.t('login.error_wrong_desc'), 'warning');
+                return;
+            }
+
+            if (user.password && user.password !== password) {
+                setLoginLoading(false);
+                showPasswordError('login.error_wrong_password');
+                return;
+            }
+
+            if (!user.is_active) {
+                setLoginLoading(false);
+                const reason = user.ban_reason || I18n.t('login.banned_reason_default');
+                showError(
+                    I18n.t('login.banned_title'),
+                    I18n.t('login.banned_desc', {
+                        date: Layout.formatDate(user.banned_at),
+                        reason: escapeHtml(reason)
+                    }),
+                    'danger'
+                );
+                return;
+            }
+
+            // Đăng nhập thành công: lưu phiên (user + token) rồi điều hướng theo ?redirect / vai trò
+            Layout.saveSession(user, apiData && apiData.token);
+            Layout.showToast(I18n.t('login.welcome_back', { name: user.display_name }), 'success');
+            window.location.href = Layout.resolvePostLoginRedirect(user);
+        }
+
+        function simulateLoginError(type) {
+            if (type === 'wrong_credentials') {
+                document.getElementById('emailInput').value = 'wrong_email@notfound.com';
+                document.getElementById('passwordInput').value = 'wrongpassword';
+                Validators.showError(document.getElementById('emailInput'), I18n.t('login.error_email_not_found'));
+                showError(I18n.t('login.error_wrong_title'), I18n.t('login.error_wrong_desc'), 'warning');
+            } else if (type === 'banned_user') {
+                fillDemoAccount('banned');
+                const bannedUser = MockData.users.find(u => u.email === 'quangcao.spammer247@gmail.com');
+                showError(
+                    I18n.t('login.banned_title'),
+                    I18n.t('login.banned_desc', {
+                        date: Layout.formatDate(bannedUser.banned_at),
+                        reason: escapeHtml(bannedUser.ban_reason || I18n.t('login.banned_reason_default'))
+                    }),
+                    'danger'
+                );
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showError(title, desc, level = 'warning') {
+            const alert = document.getElementById('loginErrorAlert');
+            const titleEl = document.getElementById('errorTitle');
+            const descEl = document.getElementById('errorDesc');
+
+            alert.classList.remove('hidden');
+            if (level === 'danger') {
+                alert.className = 'p-4 rounded-xl border bg-red-950/60 border-red-500/50 text-red-200 text-xs space-y-1';
+                titleEl.innerHTML = '<i class="fa-solid fa-ban text-red-400"></i>';
+            } else {
+                alert.className = 'p-4 rounded-xl border bg-amber-950/60 border-amber-500/50 text-amber-200 text-xs space-y-1';
+                titleEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i>';
+            }
+            const titleText = document.createElement('span');
+            titleText.textContent = title;
+            titleEl.appendChild(titleText);
+            descEl.innerHTML = desc;
+        }
+
+        function hideError() {
+            document.getElementById('loginErrorAlert').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
