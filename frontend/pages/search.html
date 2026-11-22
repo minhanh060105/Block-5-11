@@ -54,19 +54,15 @@
                     </button>
                 </div>
 
-                <!-- Chip Thẻ Tags để lọc nhanh -->
-                <div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 block mb-2" data-i18n="search.tags_label">Lọc theo chủ đề:</span>
-                    <div id="searchTagChips" class="flex flex-wrap gap-2 text-xs">
-                        <!-- Render tags qua JS -->
+                <!-- Bộ lọc theo Thẻ Tags & Danh mục -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 block mb-2" data-i18n="search.tags_label">Lọc theo chủ đề:</span>
+                        <div id="searchTagChips"></div>
                     </div>
-                </div>
-
-                <!-- Chip Danh mục dùng chung từ MockData.categories -->
-                <div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 block mb-2" data-i18n="home.categories_label">Danh mục:</span>
-                    <div id="searchCategoryChips" class="flex flex-wrap gap-2 text-xs">
-                        <!-- Render categories qua JS -->
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 block mb-2" data-i18n="home.categories_label">Danh mục:</span>
+                        <div id="searchCategoryChips"></div>
                     </div>
                 </div>
 
@@ -105,11 +101,14 @@
     <script src="../assets/js/validators.js"></script>
     <script src="../assets/js/pagination.js"></script>
     <script src="../assets/js/sanitize.js"></script>
+    <script src="../assets/js/searchable-select.js"></script>
     <script src="../assets/js/layout.js"></script>
 
     <script>
         let selectedTagSlug = null;
         let selectedCategorySlug = null;
+        let tagFilterSelect = null;
+        let categoryFilterSelect = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             I18n.ready(() => {
@@ -146,52 +145,50 @@
 
         function renderTagChips() {
             const container = document.getElementById('searchTagChips');
-            if (!container || !MockData.tags) return;
+            if (!container || !MockData.tags || !window.SearchableSelect) return;
 
-            container.innerHTML = `
-                <button onclick="toggleTagFilter(null)" class="px-3 py-1.5 rounded-full border ${!selectedTagSlug ? 'bg-substackOrange border-substackOrange text-white' : 'bg-cardBg border-borderDark text-gray-300 hover:border-substackOrange'} transition font-medium">
-                    ${Layout.escapeHtml(I18n.t('common.all'))}
-                </button>
-                ${MockData.tags.map(t => `
-                    <button onclick="toggleTagFilter('${t.slug}')" class="px-3 py-1.5 rounded-full border ${selectedTagSlug === t.slug ? 'bg-substackOrange border-substackOrange text-white' : 'bg-cardBg border-borderDark text-gray-300 hover:border-substackOrange'} transition font-medium">
-                        # ${Layout.escapeHtml(t.name)}
-                    </button>
-                `).join('')}
-            `;
+            const options = [
+                { value: '', label: I18n.t('common.all') },
+                ...MockData.tags.map(t => ({ value: t.slug, label: '# ' + t.name }))
+            ];
+
+            tagFilterSelect = SearchableSelect.mount(container, {
+                options,
+                placeholder: I18n.t('common.all'),
+                searchPlaceholder: I18n.t('search.input_placeholder'),
+                emptyText: I18n.t('common.no_results'),
+                value: selectedTagSlug,
+                onChange: (value) => toggleTagFilter(value || null)
+            });
         }
 
         function toggleTagFilter(slug) {
-            selectedTagSlug = slug;
-            renderTagChips();
+            selectedTagSlug = slug || null;
             executeSearch();
-        }
-
-        function categoryChipClass(slug) {
-            return slug === selectedCategorySlug
-                ? 'px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white transition font-medium'
-                : 'px-3 py-1.5 rounded-full border border-borderDark bg-cardBg text-gray-300 hover:border-substackOrange transition font-medium';
         }
 
         function renderCategoryChips() {
             const container = document.getElementById('searchCategoryChips');
-            if (!container || !MockData.categories) return;
+            if (!container || !MockData.categories || !window.SearchableSelect) return;
 
             const activeCategories = MockData.categories.filter(c => c.is_active);
-            container.innerHTML = `
-                <button onclick="toggleCategoryFilter(null)" class="${categoryChipClass(null)}">
-                    ${Layout.escapeHtml(I18n.t('common.all_categories'))}
-                </button>
-                ${activeCategories.map(c => `
-                    <button onclick="toggleCategoryFilter('${c.slug}')" class="${categoryChipClass(c.slug)}">
-                        ${Layout.escapeHtml(c.name)}
-                    </button>
-                `).join('')}
-            `;
+            const options = [
+                { value: '', label: I18n.t('common.all_categories') },
+                ...activeCategories.map(c => ({ value: c.slug, label: c.name }))
+            ];
+
+            categoryFilterSelect = SearchableSelect.mount(container, {
+                options,
+                placeholder: I18n.t('common.all_categories'),
+                searchPlaceholder: I18n.t('search.input_placeholder'),
+                emptyText: I18n.t('common.no_results'),
+                value: selectedCategorySlug,
+                onChange: (value) => toggleCategoryFilter(value || null)
+            });
         }
 
         function toggleCategoryFilter(slug) {
-            selectedCategorySlug = slug;
-            renderCategoryChips();
+            selectedCategorySlug = slug || null;
             executeSearch();
         }
 
@@ -380,8 +377,8 @@
             document.getElementById('searchInput').value = '';
             selectedTagSlug = null;
             selectedCategorySlug = null;
-            renderTagChips();
-            renderCategoryChips();
+            if (tagFilterSelect) tagFilterSelect.setValue(null);
+            if (categoryFilterSelect) categoryFilterSelect.setValue(null);
             executeSearch();
         }
     </script>

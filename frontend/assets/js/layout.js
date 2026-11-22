@@ -261,7 +261,7 @@ window.Layout = (function () {
                         <div class="pt-2.5 border-t border-borderDark flex items-center justify-between text-[11px]">
                             <a href="${basePath}screens.html" class="text-substackOrange hover:underline flex items-center space-x-1 font-medium">
                                 <i class="fa-solid fa-list-check"></i>
-                                <span data-i18n="layout.screens_catalog">Mục lục 16 giao diện</span>
+                                <span data-i18n="layout.screens_catalog">Mục lục 17 giao diện</span>
                             </a>
                             <span class="text-gray-500" data-i18n="layout.version">v1.0 • Static Mock</span>
                         </div>
@@ -737,7 +737,7 @@ window.Layout = (function () {
             <!-- Footer sidebar -->
             <div class="pt-4 border-t border-borderDark text-xs text-gray-500 space-y-2">
                 <div class="flex items-center justify-between">
-                    <a href="${basePath}screens.html" class="text-gray-400 hover:text-substackOrange transition font-medium" data-i18n="nav.screens_catalog">Mục lục 16 giao diện</a>
+                    <a href="${basePath}screens.html" class="text-gray-400 hover:text-substackOrange transition font-medium" data-i18n="nav.screens_catalog">Mục lục 17 giao diện</a>
                     <span class="bg-borderDark text-gray-300 px-2 py-0.5 rounded text-[10px] uppercase">${role}</span>
                 </div>
                 <p class="text-[11px] leading-relaxed" data-i18n="layout.sidebar_footer">Substack Clone © 2026. Giao diện HTML tĩnh chuẩn hoá.</p>
@@ -807,6 +807,11 @@ window.Layout = (function () {
                         <span data-i18n="nav.admin_users">Quản lý người dùng</span>
                     </a>
 
+                    <a href="roles.html" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition font-medium ${activeNav === 'roles' ? 'bg-substackOrange text-white' : 'text-gray-300 hover:bg-borderDark hover:text-white'}">
+                        <i class="fa-solid fa-user-lock w-5"></i>
+                        <span data-i18n="nav.admin_roles">Quản lý Role</span>
+                    </a>
+
                     <a href="languages.html" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition font-medium ${activeNav === 'languages' ? 'bg-substackOrange text-white' : 'text-gray-300 hover:bg-borderDark hover:text-white'}">
                         <i class="fa-solid fa-language w-5"></i>
                         <span data-i18n="nav.admin_languages">Quản lý ngôn ngữ</span>
@@ -821,7 +826,7 @@ window.Layout = (function () {
                 </a>
                 <a href="../screens.html" class="flex items-center space-x-2 text-xs text-substackOrange hover:underline px-3 py-1 font-medium">
                     <i class="fa-solid fa-list-check"></i>
-                    <span data-i18n="nav.screens_catalog">Mục lục 16 màn hình</span>
+                    <span data-i18n="nav.screens_catalog">Mục lục 17 màn hình</span>
                 </a>
             </div>
         `;

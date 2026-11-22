@@ -633,12 +633,10 @@
                     btn.classList.remove('followed', 'bg-cardBg', 'border-borderDark');
                     btn.classList.add('bg-substackOrange');
                     btn.textContent = I18n.t('common.follow');
-                    Layout.showToast(I18n.t('detail.unfollow_success'), 'info');
                 } else {
                     btn.classList.add('followed', 'bg-cardBg', 'border-borderDark');
                     btn.classList.remove('bg-substackOrange');
                     btn.textContent = I18n.t('common.following');
-                    Layout.showToast(I18n.t('detail.follow_success'), 'success');
                 }
             });
         }

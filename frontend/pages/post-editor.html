@@ -104,10 +104,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="block text-gray-400 font-semibold mb-1" for="translateLanguageSelect" data-i18n="editor.translate_language_label">Ngôn ngữ dịch</label>
-                            <select id="translateLanguageSelect" name="translateLanguageSelect" class="w-full bg-darkBg border border-borderDark rounded-xl p-2.5 text-white focus:outline-none focus:border-substackOrange">
-                                <!-- Render qua JS -->
-                            </select>
+                            <label class="block text-gray-400 font-semibold mb-1" data-i18n="editor.translate_language_label">Ngôn ngữ dịch</label>
+                            <div id="translateLanguageSelect"></div>
                         </div>
 
                         <div class="form-group">
@@ -140,7 +138,7 @@
                 <div class="bg-sidebarBg border border-borderDark rounded-2xl overflow-hidden shadow-md">
                     <!-- Toolbar -->
                     <div class="flex items-center justify-between gap-2 border-b border-borderDark p-2 bg-cardBg/60 text-xs flex-wrap">
-                        <div class="flex items-center space-x-1 flex-wrap">
+                        <div id="editorFormatToolbar" class="flex items-center space-x-1 flex-wrap">
                             <button type="button" onmousedown="event.preventDefault()" onclick="execCmd('bold')" class="p-1.5 px-2.5 hover:bg-borderDark rounded text-gray-300 font-bold" data-i18n-title="editor.bold" title="In đậm">B</button>
                             <button type="button" onmousedown="event.preventDefault()" onclick="execCmd('italic')" class="p-1.5 px-2.5 hover:bg-borderDark rounded text-gray-300 italic font-serif" data-i18n-title="editor.italic" title="In nghiêng">I</button>
                             <button type="button" onmousedown="event.preventDefault()" onclick="execCmd('underline')" class="p-1.5 px-2.5 hover:bg-borderDark rounded text-gray-300 underline" data-i18n-title="editor.underline" title="Gạch chân">U</button>
@@ -184,7 +182,7 @@
                     <!-- Vùng Soạn Thảo WYSIWYG -->
                     <div id="editorEditPane" class="p-4">
                         <div class="form-group">
-                            <div id="postContentEditor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Bắt đầu viết nội dung bài viết..." data-i18n-placeholder="editor.content_placeholder" oninput="syncEditorValue()" onblur="validateEditorContent()" onpaste="handleEditorPaste(event)" class="editor-surface post-content w-full min-h-[320px] text-sm text-gray-200 focus:outline-none leading-relaxed font-sans"></div>
+                            <div id="postContentEditor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Bắt đầu viết nội dung bài viết..." data-i18n-placeholder="editor.content_placeholder" oninput="syncEditorValue()" onblur="validateEditorContent()" onpaste="handleEditorPaste(event)" class="editor-surface post-content w-full min-h-[320px] text-sm text-gray-200 leading-relaxed font-sans rounded-xl border border-borderDark bg-darkBg/30 px-3 py-2 transition focus:outline-none focus:border-substackOrange/70 focus:ring-1 focus:ring-substackOrange/40"></div>
                             <textarea id="postContentHtml" name="postContentHtml" class="hidden" aria-hidden="true"></textarea>
                             <div class="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-borderDark text-[11px] text-gray-500">
                                 <span id="contentCharCounter"></span>
@@ -201,7 +199,7 @@
                     </div>
 
                     <!-- Vùng Xem trước Preview -->
-                    <div id="editorPreviewPane" class="hidden p-6 post-content min-h-[320px] bg-darkBg/50 text-sm sm:text-base leading-relaxed">
+                    <div id="editorPreviewPane" class="hidden p-4 sm:p-6 min-h-[320px] bg-darkBg/50 text-sm sm:text-base leading-relaxed">
                         <!-- Preview HTML -->
                     </div>
                 </div>
@@ -219,6 +217,7 @@
     <script src="../assets/js/validators.js"></script>
     <script src="../assets/js/image-upload.js"></script>
     <script src="../assets/js/sanitize.js"></script>
+    <script src="../assets/js/searchable-select.js"></script>
     <script src="../assets/js/layout.js"></script>
 
     <script>
@@ -229,6 +228,7 @@
         let selectedTagIds = [];
         let postEditorValidator = null;
         let postThumbnailUpload = null;
+        let translateLanguageSelect = null;
         let savedEditorRange = null;
         let editorContentRules = null;
 
@@ -275,12 +275,6 @@
                     postLanguageSelect: {
                         required: { message: I18n.t('editor.language_required') }
                     },
-                    translateLanguageSelect: {
-                        custom: (value) => {
-                            const source = document.getElementById('postLanguageSelect').value;
-                            return value && value === source ? I18n.t('editor.translate_same_error') : null;
-                        }
-                    },
                     categorySelect: {
                         required: { message: I18n.t('editor.category_required') }
                     },
@@ -289,16 +283,9 @@
                     onSubmit: () => {}
                 });
 
-                document.getElementById('postLanguageSelect').addEventListener('change', () => {
-                    const translateEl = document.getElementById('translateLanguageSelect');
-                    if (translateEl.value) {
-                        Validators.validateField(translateEl, {
-                            custom: (value) => {
-                                const source = document.getElementById('postLanguageSelect').value;
-                                return value && value === source ? I18n.t('editor.translate_same_error') : null;
-                            }
-                        });
-                    }
+                document.getElementById('postLanguageSelect').addEventListener('change', (event) => {
+                    if (!translateLanguageSelect) return;
+                    translateLanguageSelect.setOptions(getTranslateOptions(event.target.value));
                 });
 
                 updateTitleCounter();
@@ -307,10 +294,16 @@
             });
         });
 
+        function getTranslateOptions(sourceId) {
+            return (MockData.languages || [])
+                .filter(l => l.is_active && String(l.id) !== String(sourceId))
+                .map(l => ({ value: String(l.id), label: `${l.name} (${l.code.toUpperCase()})` }));
+        }
+
         function renderLanguages() {
             const sourceSelect = document.getElementById('postLanguageSelect');
-            const translateSelect = document.getElementById('translateLanguageSelect');
-            if (!sourceSelect || !translateSelect) return;
+            const translateContainer = document.getElementById('translateLanguageSelect');
+            if (!sourceSelect || !translateContainer) return;
 
             const langs = (MockData.languages || []).filter(l => l.is_active);
             const currentCode = I18n.getCurrentLang();
@@ -320,12 +313,17 @@
                 .map(l => `<option value="${l.id}">${Layout.escapeHtml(l.name)} (${Layout.escapeHtml(l.code.toUpperCase())})</option>`)
                 .join('');
 
-            translateSelect.innerHTML = `
-                <option value="">${Layout.escapeHtml(I18n.t('editor.translate_none'))}</option>
-                ${langs.map(l => `<option value="${l.id}">${Layout.escapeHtml(l.name)} (${Layout.escapeHtml(l.code.toUpperCase())})</option>`).join('')}
-            `;
-
             if (defaultLang) sourceSelect.value = defaultLang.id;
+
+            if (window.SearchableSelect) {
+                translateLanguageSelect = SearchableSelect.mount(translateContainer, {
+                    multiple: true,
+                    options: getTranslateOptions(sourceSelect.value),
+                    placeholder: I18n.t('editor.translate_none'),
+                    searchPlaceholder: I18n.t('common.search'),
+                    emptyText: I18n.t('common.no_results')
+                });
+            }
         }
 
         function renderCategories() {
@@ -463,7 +461,13 @@
                     titleEl.value = post.title;
                     document.getElementById('postSlug').value = post.slug;
                     document.getElementById('postLanguageSelect').value = post.language_id;
-                    document.getElementById('translateLanguageSelect').value = post.translated_language_id || '';
+                    const translatedLanguageIds = Array.isArray(post.translated_language_ids)
+                        ? post.translated_language_ids
+                        : (post.translated_language_id ? [post.translated_language_id] : []);
+                    if (translateLanguageSelect) {
+                        translateLanguageSelect.setOptions(getTranslateOptions(post.language_id));
+                        translateLanguageSelect.setValue(translatedLanguageIds);
+                    }
                     document.getElementById('categorySelect').value = post.category_id || '';
                     const editor = getEditorEl();
                     editor.innerHTML = Sanitize.html(post.content_html || '');
@@ -603,25 +607,129 @@
             syncEditorValue();
         }
 
+        function renderEditorPreview() {
+            const previewPane = document.getElementById('editorPreviewPane');
+            if (!previewPane) return;
+
+            const title = document.getElementById('postTitle').value.trim();
+            const categoryId = parseInt(document.getElementById('categorySelect').value, 10);
+            const category = categoryId ? MockData.getCategoryById(categoryId) : null;
+            const sourceLangId = parseInt(document.getElementById('postLanguageSelect').value, 10);
+            const sourceLang = sourceLangId ? MockData.getLanguageById(sourceLangId) : null;
+            const translatedLanguages = translateLanguageSelect
+                ? translateLanguageSelect.getValue()
+                    .map(id => MockData.getLanguageById(parseInt(id, 10)))
+                    .filter(Boolean)
+                : [];
+            const postTags = (MockData.tags || []).filter(t => selectedTagIds.includes(t.id));
+            const coverImage = postThumbnailUpload ? (postThumbnailUpload.getValue() || '') : '';
+            const editor = getEditorEl();
+            const content = Sanitize.html(editor ? editor.innerHTML : '');
+            const currentUser = Layout.getCurrentUser() || {
+                display_name: I18n.t('common.you'),
+                handle: 'you',
+                avatar_url: 'https://i.pravatar.cc/150'
+            };
+
+            previewPane.innerHTML = `
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="bg-amber-500/10 border border-amber-500/40 text-amber-300 rounded-xl px-4 py-3 text-xs flex items-center space-x-2">
+                        <i class="fa-solid fa-eye"></i>
+                        <span>${Layout.escapeHtml(I18n.t('editor.preview_banner'))}</span>
+                    </div>
+
+                    ${coverImage ? `
+                        <div class="rounded-2xl overflow-hidden aspect-video border border-borderDark shadow-xl">
+                            <img src="${Layout.escapeHtml(coverImage)}" alt="${Layout.escapeHtml(title || I18n.t('editor.preview_no_title'))}" class="w-full h-full object-cover">
+                        </div>
+                    ` : `
+                        <div class="rounded-2xl border border-dashed border-borderDark bg-sidebarBg/60 aspect-video flex flex-col items-center justify-center gap-2 text-gray-500">
+                            <i class="fa-regular fa-image text-3xl"></i>
+                            <span class="text-xs">${Layout.escapeHtml(I18n.t('editor.preview_no_cover'))}</span>
+                        </div>
+                    `}
+
+                    <div class="flex flex-wrap gap-2">
+                        ${category ? `
+                            <span class="bg-substackOrange/15 border border-substackOrange/40 text-substackOrange px-3 py-1 rounded-full text-xs font-semibold">
+                                <i class="fa-regular fa-folder-open mr-1"></i>${Layout.escapeHtml(category.name)}
+                            </span>
+                        ` : ''}
+                        ${postTags.map(t => `
+                            <span class="bg-cardBg text-substackOrange border border-borderDark px-3 py-1 rounded-full text-xs font-medium">
+                                # ${Layout.escapeHtml(t.name)}
+                            </span>
+                        `).join('')}
+                    </div>
+
+                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight ${title ? 'text-white' : 'text-gray-500 italic'}">
+                        ${Layout.escapeHtml(title || I18n.t('editor.preview_no_title'))}
+                    </h1>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-y border-borderDark py-4">
+                        <div class="flex items-center space-x-3">
+                            <img src="${Layout.escapeHtml(currentUser.avatar_url)}" alt="${Layout.escapeHtml(currentUser.display_name)}" class="w-11 h-11 rounded-full object-cover border border-borderDark">
+                            <div>
+                                <div class="font-bold text-white text-sm">${Layout.escapeHtml(currentUser.display_name)}</div>
+                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-400 mt-0.5">
+                                    <span>@${Layout.escapeHtml(currentUser.handle)}</span>
+                                    <span>•</span>
+                                    <span>${Layout.formatDate(new Date().toISOString())}</span>
+                                    ${sourceLang ? `
+                                        <span>•</span>
+                                        <span><i class="fa-solid fa-language mr-1"></i>${Layout.escapeHtml(sourceLang.name)} (${Layout.escapeHtml(sourceLang.code.toUpperCase())})</span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        ${translatedLanguages.length ? `
+                            <div class="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                                ${translatedLanguages.map(l => `
+                                    <span class="bg-substackOrange/10 border border-substackOrange/30 text-substackOrange px-2.5 py-1 rounded-full text-[11px] font-medium">
+                                        <i class="fa-solid fa-language mr-1"></i>${Layout.escapeHtml(l.name)}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="post-content max-w-none text-gray-200 text-sm sm:text-base pt-2">
+                        ${Sanitize.text(content).length
+                            ? content
+                            : `<p class="text-gray-500 italic">${Layout.escapeHtml(I18n.t('editor.preview_empty'))}</p>`}
+                    </div>
+                </div>
+            `;
+        }
+
         function switchEditorMode(mode) {
             const editBtn = document.getElementById('modeEditBtn');
             const previewBtn = document.getElementById('modePreviewBtn');
             const editPane = document.getElementById('editorEditPane');
             const previewPane = document.getElementById('editorPreviewPane');
+            const formatToolbar = document.getElementById('editorFormatToolbar');
 
             if (mode === 'preview') {
+                saveEditorSelection();
+                closeLinkPanel();
                 editBtn.className = "px-3 py-1 rounded-md text-gray-400 hover:text-white font-medium transition";
                 previewBtn.className = "px-3 py-1 rounded-md bg-substackOrange text-white font-medium transition";
                 editPane.classList.add('hidden');
                 previewPane.classList.remove('hidden');
-                const clean = Sanitize.html(getEditorEl().innerHTML);
-                previewPane.innerHTML = clean ||
-                    `<p class="text-gray-500 italic">${Layout.escapeHtml(I18n.t('editor.preview_empty'))}</p>`;
+                if (formatToolbar) formatToolbar.classList.add('hidden');
+                renderEditorPreview();
             } else {
                 previewBtn.className = "px-3 py-1 rounded-md text-gray-400 hover:text-white font-medium transition";
                 editBtn.className = "px-3 py-1 rounded-md bg-substackOrange text-white font-medium transition";
                 previewPane.classList.add('hidden');
                 editPane.classList.remove('hidden');
+                if (formatToolbar) formatToolbar.classList.remove('hidden');
+                const editor = getEditorEl();
+                if (editor) {
+                    editor.focus();
+                    restoreEditorSelection();
+                }
             }
         }
 
@@ -649,7 +757,11 @@
             const title = document.getElementById('postTitle').value.trim();
             const slug = document.getElementById('postSlug').value.trim();
             const languageId = parseInt(document.getElementById('postLanguageSelect').value, 10);
-            const translatedLanguageId = parseInt(document.getElementById('translateLanguageSelect').value, 10) || null;
+            const translatedLanguageIds = translateLanguageSelect
+                ? translateLanguageSelect.getValue()
+                    .map(id => parseInt(id, 10))
+                    .filter(id => !Number.isNaN(id) && id !== languageId)
+                : [];
             const categoryId = parseInt(document.getElementById('categorySelect').value, 10);
             const coverImage = postThumbnailUpload ? (postThumbnailUpload.getValue() || '') : '';
             const currentUser = Layout.getCurrentUser();
@@ -663,7 +775,8 @@
                     post.content_html = cleanContent;
                     post.cover_image = coverImage;
                     post.language_id = languageId;
-                    post.translated_language_id = translatedLanguageId;
+                    post.translated_language_ids = translatedLanguageIds;
+                    delete post.translated_language_id;
                     post.category_id = categoryId;
                     post.group_id = 100 + categoryId;
                     post.status = newStatus;
@@ -683,7 +796,7 @@
                     group_id: 100 + categoryId,
                     category_id: categoryId,
                     language_id: languageId,
-                    translated_language_id: translatedLanguageId,
+                    translated_language_ids: translatedLanguageIds,
                     title: title,
                     slug: slug || generateSlug(title),
                     content_html: cleanContent,

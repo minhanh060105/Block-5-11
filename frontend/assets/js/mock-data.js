@@ -4,11 +4,111 @@
  */
 
 window.MockData = (function () {
+    // 0. PERMISSION CATALOG (nhóm quyền dùng cho trang Quản lý Role)
+    const permissionCatalog = [
+        {
+            module: 'posts',
+            moduleKey: 'admin.perm_module_posts',
+            permissions: [
+                { key: 'post.write', labelKey: 'admin.perm_post_write' },
+                { key: 'post.edit_own', labelKey: 'admin.perm_post_edit_own' },
+                { key: 'post.delete_own', labelKey: 'admin.perm_post_delete_own' },
+                { key: 'post.submit_review', labelKey: 'admin.perm_post_submit_review' }
+            ]
+        },
+        {
+            module: 'notes',
+            moduleKey: 'admin.perm_module_notes',
+            permissions: [
+                { key: 'note.write', labelKey: 'admin.perm_note_write' },
+                { key: 'note.delete', labelKey: 'admin.perm_note_delete' }
+            ]
+        },
+        {
+            module: 'interactions',
+            moduleKey: 'admin.perm_module_interactions',
+            permissions: [
+                { key: 'comment.write', labelKey: 'admin.perm_comment_write' },
+                { key: 'reaction.create', labelKey: 'admin.perm_reaction_create' },
+                { key: 'follow.manage', labelKey: 'admin.perm_follow_manage' },
+                { key: 'report.create', labelKey: 'admin.perm_report_create' }
+            ]
+        },
+        {
+            module: 'moderation',
+            moduleKey: 'admin.perm_module_moderation',
+            permissions: [
+                { key: 'moderation.posts.approve', labelKey: 'admin.perm_moderation_posts_approve' },
+                { key: 'moderation.reports.handle', labelKey: 'admin.perm_moderation_reports_handle' }
+            ]
+        },
+        {
+            module: 'users',
+            moduleKey: 'admin.perm_module_users',
+            permissions: [
+                { key: 'user.view', labelKey: 'admin.perm_user_view' },
+                { key: 'user.ban', labelKey: 'admin.perm_user_ban' }
+            ]
+        },
+        {
+            module: 'taxonomy',
+            moduleKey: 'admin.perm_module_taxonomy',
+            permissions: [
+                { key: 'category.manage', labelKey: 'admin.perm_category_manage' },
+                { key: 'tag.manage', labelKey: 'admin.perm_tag_manage' }
+            ]
+        },
+        {
+            module: 'languages',
+            moduleKey: 'admin.perm_module_languages',
+            permissions: [
+                { key: 'language.manage', labelKey: 'admin.perm_language_manage' }
+            ]
+        },
+        {
+            module: 'roles',
+            moduleKey: 'admin.perm_module_roles',
+            permissions: [
+                { key: 'role.manage', labelKey: 'admin.perm_role_manage' }
+            ]
+        }
+    ];
+
+    const ALL_PERMISSION_KEYS = permissionCatalog.reduce(
+        (acc, group) => acc.concat(group.permissions.map(p => p.key)),
+        []
+    );
+
     // 1. ROLES
     const roles = [
-        { id: 1, name: 'admin', description: 'Quản trị viên toàn quyền hệ thống' },
-        { id: 2, name: 'blogger', description: 'Tác giả viết bài, xuất bản ghi chú' },
-        { id: 3, name: 'user', description: 'Độc giả tương tác, bình luận, theo dõi' }
+        {
+            id: 1,
+            name: 'admin',
+            description: 'Quản trị viên toàn quyền hệ thống',
+            is_system: true,
+            is_active: true,
+            permissions: ALL_PERMISSION_KEYS.slice()
+        },
+        {
+            id: 2,
+            name: 'blogger',
+            description: 'Tác giả viết bài, xuất bản ghi chú',
+            is_system: true,
+            is_active: true,
+            permissions: [
+                'post.write', 'post.edit_own', 'post.delete_own', 'post.submit_review',
+                'note.write', 'note.delete',
+                'comment.write', 'reaction.create', 'follow.manage', 'report.create'
+            ]
+        },
+        {
+            id: 3,
+            name: 'user',
+            description: 'Độc giả tương tác, bình luận, theo dõi',
+            is_system: true,
+            is_active: true,
+            permissions: ['comment.write', 'reaction.create', 'follow.manage', 'report.create']
+        }
     ];
 
     // 2. USERS (>= 8 users, đủ vai trò, 1 user bị ban)
@@ -787,6 +887,7 @@ window.MockData = (function () {
     }
 
     return {
+        permissionCatalog,
         roles,
         users,
         languages,

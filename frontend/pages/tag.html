@@ -46,9 +46,7 @@
             <!-- Lọc theo danh mục (dùng chung MockData.categories) -->
             <div>
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-2" data-i18n="home.categories_label">Danh mục:</span>
-                <div id="tagCategoryChips" class="flex flex-wrap gap-2 text-xs">
-                    <!-- Render categories qua JS -->
-                </div>
+                <div id="tagCategoryChips"></div>
             </div>
 
             <!-- Danh sách bài viết theo Thẻ -->
@@ -70,10 +68,12 @@
     <script src="../assets/js/i18n.js"></script>
     <script src="../assets/js/pagination.js"></script>
     <script src="../assets/js/sanitize.js"></script>
+    <script src="../assets/js/searchable-select.js"></script>
     <script src="../assets/js/layout.js"></script>
 
     <script>
         let selectedCategorySlug = null;
+        let categoryFilterSelect = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             I18n.ready(() => {
@@ -92,32 +92,34 @@
             });
         });
 
-        function categoryChipClass(slug) {
-            return slug === selectedCategorySlug
-                ? 'px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium transition'
-                : 'px-3 py-1.5 rounded-full border border-borderDark bg-cardBg text-gray-300 hover:border-substackOrange font-medium transition';
-        }
-
         function renderTagCategoryChips() {
             const container = document.getElementById('tagCategoryChips');
-            if (!container || !MockData.categories) return;
+            if (!container || !MockData.categories || !window.SearchableSelect) return;
 
             const activeCategories = MockData.categories.filter(c => c.is_active);
-            container.innerHTML = `
-                <button onclick="filterTagByCategory(null)" class="${categoryChipClass(null)}">
-                    ${Layout.escapeHtml(I18n.t('common.all_categories'))}
-                </button>
-                ${activeCategories.map(c => `
-                    <button onclick="filterTagByCategory('${c.slug}')" class="${categoryChipClass(c.slug)}">
-                        ${Layout.escapeHtml(c.name)}
-                    </button>
-                `).join('')}
-            `;
+            const options = [
+                { value: '', label: I18n.t('common.all_categories') },
+                ...activeCategories.map(c => ({ value: c.slug, label: c.name }))
+            ];
+
+            categoryFilterSelect = SearchableSelect.mount(container, {
+                options,
+                placeholder: I18n.t('common.all_categories'),
+                searchPlaceholder: I18n.t('search.input_placeholder'),
+                emptyText: I18n.t('common.no_results'),
+                value: selectedCategorySlug,
+                onChange: (value) => filterTagByCategory(value || null)
+            });
         }
 
         function filterTagByCategory(slug) {
-            selectedCategorySlug = slug;
-            renderTagCategoryChips();
+            selectedCategorySlug = slug || null;
+
+            // Đưa phân trang về trang 1 khi đổi bộ lọc
+            const url = new URL(window.location.href);
+            url.searchParams.delete('page');
+            window.history.replaceState({}, '', url.toString());
+
             renderTagPage();
         }
 

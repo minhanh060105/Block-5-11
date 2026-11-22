@@ -496,12 +496,7 @@
                 const me = Layout.getCurrentUser();
                 if (!me || !currentProfileUser || me.id === currentProfileUser.id) return;
 
-                const name = currentProfileUser.display_name;
-                const isNowFollowing = MockData.toggleFollow(me.id, currentProfileUser.id);
-                Layout.showToast(
-                    I18n.t(isNowFollowing ? 'profile.follow_success' : 'profile.unfollow_success', { name }),
-                    isNowFollowing ? 'success' : 'info'
-                );
+                MockData.toggleFollow(me.id, currentProfileUser.id);
                 // Render lại để số đếm + trạng thái nút cùng lấy từ nguồn dữ liệu mới
                 loadProfile();
             });

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="admin.roles_page_title">Quản lý Role | Admin Substack</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#121212',
+                        sidebarBg: '#181818',
+                        cardBg: '#1e1e1e',
+                        substackOrange: '#ff6719',
+                        substackOrangeHover: '#e05b15',
+                        borderDark: '#2a2a2a'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../../styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-darkBg text-gray-200 min-h-screen flex flex-col relative pb-16 md:pb-0">
+
+    <!-- Header dùng chung -->
+    <header id="appHeader"></header>
+
+    <div class="flex flex-1 w-full">
+        <!-- Sidebar Admin -->
+        <aside id="adminSidebar"></aside>
+
+        <!-- Main content -->
+        <main class="flex-1 px-4 sm:px-8 py-6 max-w-6xl w-full space-y-6">
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-borderDark pb-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center space-x-2">
+                        <i class="fa-solid fa-user-lock text-substackOrange"></i>
+                        <span data-i18n="admin.roles_title">Quản lý vai trò (Role)</span>
+                    </h1>
+                    <p class="text-xs text-gray-400 mt-1" data-i18n="admin.roles_subtitle">Định nghĩa vai trò và cấu hình nhóm quyền được cấp cho từng vai trò trong hệ thống.</p>
+                </div>
+                <button type="button" onclick="openRoleModal()" class="px-4 py-2 bg-substackOrange hover:bg-substackOrangeHover text-white text-xs font-semibold rounded-xl shadow inline-flex items-center space-x-2 self-start sm:self-auto">
+                    <i class="fa-solid fa-plus"></i>
+                    <span data-i18n="admin.roles_add">Thêm role mới</span>
+                </button>
+            </div>
+
+            <!-- Thanh Tìm Kiếm & Bộ Lọc -->
+            <form id="roleFilterForm" novalidate class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-sidebarBg p-4 rounded-2xl border border-borderDark text-xs">
+                <!-- Ô tìm kiếm -->
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500"></i>
+                    <input type="text" id="roleSearchInput" name="roleSearch" oninput="renderRolesTable()" placeholder="Tìm theo tên hoặc mô tả role..." data-i18n-placeholder="admin.roles_search_placeholder" class="w-full bg-darkBg border border-borderDark rounded-xl pl-8 pr-3 py-2 text-white focus:outline-none focus:border-substackOrange">
+                </div>
+
+                <!-- Lọc trạng thái -->
+                <div class="flex items-center space-x-2">
+                    <span class="text-gray-400 font-semibold whitespace-nowrap" data-i18n="admin.filter_status">Trạng thái:</span>
+                    <select id="roleStatusFilter" name="roleStatus" onchange="renderRolesTable()" class="w-full bg-darkBg border border-borderDark rounded-xl px-3 py-2 text-white focus:outline-none">
+                        <option value="all" data-i18n="admin.roles_all_statuses">Tất cả trạng thái</option>
+                        <option value="active" data-i18n="admin.roles_status_active">Đang hoạt động</option>
+                        <option value="inactive" data-i18n="admin.roles_status_inactive">Tạm khóa</option>
+                    </select>
+                </div>
+            </form>
+
+            <!-- Bảng Role -->
+            <div class="bg-sidebarBg border border-borderDark rounded-2xl overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[760px] text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-cardBg/80 border-b border-borderDark text-gray-400 font-bold uppercase tracking-wider text-[11px]">
+                                <th class="p-3.5" data-i18n="admin.roles_col_name">Tên Role</th>
+                                <th class="p-3.5" data-i18n="admin.roles_col_description">Mô tả</th>
+                                <th class="p-3.5" data-i18n="admin.roles_col_users">Số người dùng</th>
+                                <th class="p-3.5" data-i18n="admin.roles_col_permissions">Quyền hạn</th>
+                                <th class="p-3.5" data-i18n="common.status">Trạng thái</th>
+                                <th class="p-3.5 text-right" data-i18n="common.actions">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolesTableBody" class="divide-y divide-borderDark">
+                            <!-- Render qua JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Phân trang role -->
+            <div id="rolesPaginationBar" class="pt-2"></div>
+
+        </main>
+    </div>
+
+    <!-- MODAL THÊM / SỬA ROLE -->
+    <div id="roleModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-sidebarBg border border-borderDark rounded-2xl w-full max-w-2xl p-6 relative shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-borderDark pb-3">
+                <div class="flex items-center space-x-2 text-substackOrange">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <h3 id="roleModalTitle" class="font-bold text-white text-base" data-i18n="admin.roles_modal_add_title">Thêm role mới</h3>
+                </div>
+                <button type="button" onclick="closeRoleModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="roleForm" novalidate class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-xs font-bold text-gray-300 mb-1.5" for="roleNameInput" data-i18n="admin.roles_name_label">Tên role (bắt buộc) *</label>
+                        <input type="text" id="roleNameInput" name="roleName" placeholder="Ví dụ: editor" data-i18n-placeholder="admin.roles_name_placeholder" class="w-full bg-darkBg border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-substackOrange">
+                        <p class="text-[11px] text-gray-500 mt-1" data-i18n="admin.roles_name_hint">Chỉ gồm chữ thường, số và dấu gạch ngang (2–30 ký tự).</p>
+                        <p id="roleNameLockedHint" class="hidden text-[11px] text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i><span data-i18n="admin.roles_name_locked">Role hệ thống - không thể đổi tên.</span></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-xs font-bold text-gray-300 mb-1.5" for="roleStatusSelect" data-i18n="admin.roles_status_label">Trạng thái</label>
+                        <select id="roleStatusSelect" name="roleStatus" class="w-full bg-darkBg border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-substackOrange">
+                            <option value="active" data-i18n="admin.roles_status_active">Đang hoạt động</option>
+                            <option value="inactive" data-i18n="admin.roles_status_inactive">Tạm khóa</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="block text-xs font-bold text-gray-300 mb-1.5" for="roleDescriptionInput" data-i18n="admin.roles_description_label">Mô tả</label>
+                    <textarea id="roleDescriptionInput" name="roleDescription" rows="2" placeholder="Mô tả ngắn về phạm vi của role..." data-i18n-placeholder="admin.roles_description_placeholder" class="w-full bg-darkBg border border-borderDark rounded-xl p-3 text-xs text-white focus:outline-none focus:border-substackOrange"></textarea>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-gray-300" data-i18n="admin.roles_permissions_label">Nhóm quyền được cấp</span>
+                        <span class="text-[11px] text-gray-500" data-i18n="admin.roles_permissions_hint">Tích chọn các quyền mà role này được phép sử dụng.</span>
+                    </div>
+                    <div id="rolePermissionGroups" class="space-y-3"></div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-borderDark">
+                    <button type="button" onclick="closeRoleModal()" class="px-4 py-2 bg-cardBg text-gray-300 text-xs rounded-xl hover:bg-borderDark" data-i18n="common.cancel">Hủy</button>
+                    <button type="submit" id="roleModalSubmitBtn" class="px-5 py-2 bg-substackOrange hover:bg-substackOrangeHover text-white text-xs font-semibold rounded-xl shadow" data-i18n="admin.roles_create">Tạo role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script & Mock Data -->
+    <script src="../../assets/js/mock-data.js"></script>
+    <script src="../../assets/js/i18n.js"></script>
+    <script src="../../assets/js/validators.js"></script>
+    <script src="../../assets/js/pagination.js"></script>
+    <script src="../../assets/js/layout.js"></script>
+
+    <script>
+        const ROLE_NAME_REGEX = /^[a-z0-9-]+$/;
+        let editingRoleId = null;
+        let roleValidator = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            I18n.ready(() => {
+                Layout.renderHeader('appHeader');
+                Layout.renderAdminSidebar('roles', 'adminSidebar');
+
+                Validators.attach('#roleFilterForm', {
+                    roleSearch: {},
+                    roleStatus: {}
+                }, {
+                    onSubmit: () => renderRolesTable()
+                });
+
+                roleValidator = Validators.attach('#roleForm', {
+                    roleName: {
+                        required: { message: I18n.t('admin.roles_err_required') },
+                        minLength: { value: 2, message: I18n.t('admin.roles_err_length') },
+                        maxLength: { value: 30, message: I18n.t('admin.roles_err_length') },
+                        pattern: { regex: ROLE_NAME_REGEX, message: I18n.t('admin.roles_err_pattern') },
+                        custom: (value) => {
+                            const exists = MockData.roles.some(r =>
+                                r.name.toLowerCase() === value.toLowerCase() && r.id !== editingRoleId
+                            );
+                            return exists ? I18n.t('admin.roles_err_unique') : null;
+                        }
+                    }
+                }, {
+                    onSubmit: (values) => saveRole(values)
+                });
+
+                renderRolesTable();
+
+                window.addEventListener('demoStateChanged', () => {
+                    renderRolesTable(false);
+                });
+            });
+        });
+
+        function normalizeText(text) {
+            return String(text || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd');
+        }
+
+        function resetPageInUrl() {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('page') || url.searchParams.has('pageSize')) {
+                url.searchParams.delete('page');
+                url.searchParams.delete('pageSize');
+                window.history.replaceState({}, '', url.toString());
+            }
+        }
+
+        function countUsersByRole(roleId) {
+            return MockData.users.filter(u => u.role_id === roleId).length;
+        }
+
+        function renderRolesTable(resetPage = true) {
+            const state = Layout.getDemoState();
+            const tbody = document.getElementById('rolesTableBody');
+            const paginationBar = document.getElementById('rolesPaginationBar');
+            const search = normalizeText(document.getElementById('roleSearchInput').value.trim());
+            const statusFilter = document.getElementById('roleStatusFilter').value;
+
+            if (resetPage) resetPageInUrl();
+
+            // 1. Loading
+            if (state === 'loading') {
+                paginationBar.innerHTML = '';
+                tbody.innerHTML = Array(3).fill(0).map(() => `
+                    <tr><td colspan="6" class="p-4 text-center"><div class="h-6 bg-borderDark/40 rounded animate-pulse w-full"></div></td></tr>
+                `).join('');
+                return;
+            }
+
+            // 2. Error
+            if (state === 'error') {
+                paginationBar.innerHTML = '';
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-rose-400">${Layout.escapeHtml(I18n.t('admin.roles_load_error'))}</td></tr>`;
+                return;
+            }
+
+            let roles = [...MockData.roles];
+
+            // 3. Demo Empty
+            if (state === 'empty') roles = [];
+
+            if (search) {
+                roles = roles.filter(r =>
+                    normalizeText(r.name).includes(search) ||
+                    normalizeText(r.description).includes(search)
+                );
+            }
+
+            if (statusFilter === 'active') {
+                roles = roles.filter(r => r.is_active);
+            } else if (statusFilter === 'inactive') {
+                roles = roles.filter(r => !r.is_active);
+            }
+
+            if (roles.length === 0) {
+                paginationBar.innerHTML = '';
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">${Layout.escapeHtml(I18n.t('admin.roles_no_results'))}</td></tr>`;
+                return;
+            }
+
+            Pagination.render({
+                container: paginationBar,
+                items: roles,
+                pageSize: 10,
+                pageSizeOptions: [10, 20, 50],
+                syncUrl: true,
+                onPageChange: (pagedRoles) => {
+                    tbody.innerHTML = pagedRoles.map(role => {
+                        const userCount = countUsersByRole(role.id);
+                        const permissionCount = (role.permissions || []).length;
+                        const statusBadge = role.is_active
+                            ? `<span class="px-2 py-0.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 font-bold rounded">${Layout.escapeHtml(I18n.t('admin.roles_badge_active'))}</span>`
+                            : `<span class="px-2 py-0.5 bg-amber-950/60 border border-amber-500/40 text-amber-400 font-bold rounded">${Layout.escapeHtml(I18n.t('admin.roles_badge_inactive'))}</span>`;
+
+                        return `
+                            <tr class="hover:bg-cardBg/40 transition">
+                                <td class="p-3.5">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fa-solid ${role.is_system ? 'fa-lock' : 'fa-user-tag'} text-substackOrange text-[11px]"></i>
+                                        <span class="font-mono font-bold text-white">@${Layout.escapeHtml(role.name)}</span>
+                                        ${role.is_system ? `<span class="text-[9px] bg-borderDark px-1.5 py-0.2 rounded text-gray-400 font-normal">${Layout.escapeHtml(I18n.t('admin.roles_system_badge'))}</span>` : ''}
+                                    </div>
+                                </td>
+                                <td class="p-3.5 text-gray-300 max-w-xs">${Layout.escapeHtml(role.description || '—')}</td>
+                                <td class="p-3.5 text-gray-300">${Layout.escapeHtml(I18n.t('admin.roles_user_count', { count: userCount }))}</td>
+                                <td class="p-3.5 text-gray-300">${Layout.escapeHtml(I18n.t('admin.roles_permission_count', { count: permissionCount }))}</td>
+                                <td class="p-3.5">${statusBadge}</td>
+                                <td class="p-3.5 text-right whitespace-nowrap">
+                                    <button onclick="openRoleModal(${role.id})" class="px-3 py-1.5 bg-cardBg hover:bg-borderDark text-gray-300 border border-borderDark rounded-xl transition font-medium" title="${Layout.escapeHtml(I18n.t('common.edit'))}">
+                                        <i class="fa-solid fa-pen mr-1"></i> ${Layout.escapeHtml(I18n.t('common.edit'))}
+                                    </button>
+                                    <button onclick="requestDeleteRole(${role.id})" class="px-3 py-1.5 bg-cardBg hover:bg-red-950/60 text-gray-300 hover:text-red-400 border border-borderDark rounded-xl transition font-medium" title="${Layout.escapeHtml(I18n.t('common.delete'))}">
+                                        <i class="fa-solid fa-trash mr-1"></i> ${Layout.escapeHtml(I18n.t('common.delete'))}
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            });
+        }
+
+        function renderPermissionGroups(selectedPermissions) {
+            const container = document.getElementById('rolePermissionGroups');
+            const selected = new Set(selectedPermissions || []);
+            const selectAllLabel = I18n.t('admin.roles_select_all');
+
+            container.innerHTML = MockData.permissionCatalog.map(group => {
+                const items = group.permissions.map(perm => `
+                    <label class="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer">
+                        <input type="checkbox" class="role-permission-checkbox accent-substackOrange w-3.5 h-3.5" data-permission="${Layout.escapeHtml(perm.key)}" data-module="${Layout.escapeHtml(group.module)}" ${selected.has(perm.key) ? 'checked' : ''}>
+                        <span>${Layout.escapeHtml(I18n.t(perm.labelKey))}</span>
+                    </label>
+                `).join('');
+
+                return `
+                    <div class="border border-borderDark rounded-xl overflow-hidden" data-module-group="${Layout.escapeHtml(group.module)}">
+                        <div class="flex items-center justify-between px-3 py-2 bg-darkBg border-b border-borderDark">
+                            <span class="text-xs font-bold text-white">${Layout.escapeHtml(I18n.t(group.moduleKey))}</span>
+                            <label class="flex items-center space-x-1.5 text-[11px] text-substackOrange cursor-pointer">
+                                <input type="checkbox" class="role-module-toggle accent-substackOrange w-3.5 h-3.5" data-module="${Layout.escapeHtml(group.module)}">
+                                <span>${Layout.escapeHtml(selectAllLabel)}</span>
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">${items}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.querySelectorAll('.role-module-toggle').forEach(toggle => {
+                toggle.addEventListener('change', () => {
+                    container.querySelectorAll(`.role-permission-checkbox[data-module="${toggle.dataset.module}"]`).forEach(cb => {
+                        cb.checked = toggle.checked;
+                    });
+                    syncModuleToggles();
+                });
+            });
+
+            container.querySelectorAll('.role-permission-checkbox').forEach(cb => {
+                cb.addEventListener('change', syncModuleToggles);
+            });
+
+            syncModuleToggles();
+        }
+
+        function syncModuleToggles() {
+            document.querySelectorAll('#rolePermissionGroups .role-module-toggle').forEach(toggle => {
+                const boxes = Array.from(document.querySelectorAll(`#rolePermissionGroups .role-permission-checkbox[data-module="${toggle.dataset.module}"]`));
+                const checked = boxes.filter(cb => cb.checked).length;
+                toggle.checked = boxes.length > 0 && checked === boxes.length;
+                toggle.indeterminate = checked > 0 && checked < boxes.length;
+            });
+        }
+
+        function getSelectedPermissions() {
+            return Array.from(document.querySelectorAll('#rolePermissionGroups .role-permission-checkbox:checked'))
+                .map(cb => cb.dataset.permission);
+        }
+
+        function openRoleModal(roleId) {
+            const role = roleId ? MockData.roles.find(r => r.id === roleId) : null;
+            if (roleId && !role) return;
+
+            editingRoleId = role ? role.id : null;
+
+            const form = document.getElementById('roleForm');
+            form.reset();
+            if (roleValidator) roleValidator.clear();
+
+            document.getElementById('roleModalTitle').textContent = role
+                ? I18n.t('admin.roles_modal_edit_title')
+                : I18n.t('admin.roles_modal_add_title');
+            document.getElementById('roleModalSubmitBtn').textContent = role
+                ? I18n.t('admin.roles_save')
+                : I18n.t('admin.roles_create');
+
+            const nameInput = document.getElementById('roleNameInput');
+            const lockedHint = document.getElementById('roleNameLockedHint');
+            const isSystem = !!(role && role.is_system);
+            nameInput.disabled = isSystem;
+            nameInput.value = role ? role.name : '';
+            lockedHint.classList.toggle('hidden', !isSystem);
+
+            document.getElementById('roleDescriptionInput').value = role ? (role.description || '') : '';
+            document.getElementById('roleStatusSelect').value = role && !role.is_active ? 'inactive' : 'active';
+
+            renderPermissionGroups(role ? role.permissions : []);
+
+            document.getElementById('roleModal').classList.remove('hidden');
+            nameInput.focus();
+        }
+
+        function closeRoleModal() {
+            document.getElementById('roleModal').classList.add('hidden');
+            document.getElementById('roleNameInput').disabled = false;
+            editingRoleId = null;
+        }
+
+        function saveRole(values) {
+            const name = (values.roleName || '').trim();
+            const description = (values.roleDescription || '').trim();
+            const isActive = values.roleStatus !== 'inactive';
+            const permissions = getSelectedPermissions();
+
+            if (editingRoleId) {
+                const role = MockData.roles.find(r => r.id === editingRoleId);
+                if (!role) return;
+                if (!role.is_system) role.name = name;
+                role.description = description;
+                role.is_active = isActive;
+                role.permissions = permissions;
+                Layout.showToast(I18n.t('admin.roles_saved_toast', { name: role.name }), 'success');
+            } else {
+                const newId = MockData.roles.reduce((max, r) => Math.max(max, r.id), 0) + 1;
+                MockData.roles.push({
+                    id: newId,
+                    name,
+                    description,
+                    is_system: false,
+                    is_active: isActive,
+                    permissions
+                });
+                Layout.showToast(I18n.t('admin.roles_created_toast', { name }), 'success');
+            }
+
+            closeRoleModal();
+            renderRolesTable(false);
+        }
+
+        function requestDeleteRole(roleId) {
+            const role = MockData.roles.find(r => r.id === roleId);
+            if (!role) return;
+
+            if (role.is_system) {
+                Layout.showToast(I18n.t('admin.roles_delete_blocked_system'), 'warning');
+                return;
+            }
+
+            const userCount = countUsersByRole(role.id);
+            if (userCount > 0) {
+                Layout.showToast(I18n.t('admin.roles_delete_blocked_in_use', { count: userCount }), 'warning');
+                return;
+            }
+
+            Layout.showConfirmModal({
+                title: I18n.t('admin.roles_delete_title'),
+                message: I18n.t('admin.roles_delete_message', { name: role.name }),
+                confirmText: I18n.t('admin.roles_delete_confirm'),
+                confirmClass: 'bg-red-600 hover:bg-red-700',
+                onConfirm: () => {
+                    const index = MockData.roles.findIndex(r => r.id === role.id);
+                    if (index !== -1) MockData.roles.splice(index, 1);
+                    Layout.showToast(I18n.t('admin.roles_deleted_toast', { name: role.name }), 'success');
+                    renderRolesTable(false);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -68,28 +68,21 @@
                 </a>
             </div>
 
-            <!-- Thanh lọc theo Thẻ Tags -->
-            <div class="mb-5">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400" data-i18n="home.discover_topics">Chủ đề khám phá:</span>
-                    <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.filter_all">Tất cả chủ đề</a>
+            <!-- Bộ lọc theo Thẻ Tags & Danh mục -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400" data-i18n="home.discover_topics">Chủ đề khám phá:</span>
+                        <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.filter_all">Tất cả chủ đề</a>
+                    </div>
+                    <div id="tagFilterBar"></div>
                 </div>
-                <div id="tagFilterBar" class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
-                    <button onclick="filterByTag('all')" data-tag-slug="all" class="px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition" data-i18n="common.all">
-                        Tất cả
-                    </button>
-                    <!-- Danh sách chip tag sẽ được render qua JS -->
-                </div>
-            </div>
-
-            <!-- Thanh lọc theo Danh mục -->
-            <div class="mb-5">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400" data-i18n="home.categories_label">Danh mục:</span>
-                    <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.view_all">Xem tất cả</a>
-                </div>
-                <div id="categoryFilterBar" class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
-                    <!-- Render danh mục đang hoạt động qua JS -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400" data-i18n="home.categories_label">Danh mục:</span>
+                        <a href="search.html" class="text-xs text-substackOrange hover:underline" data-i18n="common.view_all">Xem tất cả</a>
+                    </div>
+                    <div id="categoryFilterBar"></div>
                 </div>
             </div>
 
@@ -146,6 +139,7 @@
     <script src="../assets/js/i18n.js"></script>
     <script src="../assets/js/pagination.js"></script>
     <script src="../assets/js/sanitize.js"></script>
+    <script src="../assets/js/searchable-select.js"></script>
     <script src="../assets/js/layout.js"></script>
 
     <script>
@@ -198,73 +192,61 @@
 
         function renderTagFilterChips() {
             const container = document.getElementById('tagFilterBar');
-            if (!container || !MockData.tags) return;
+            if (!container || !MockData.tags || !window.SearchableSelect) return;
 
-            const tagsHTML = MockData.tags.map(t => `
-                <button onclick="filterByTag('${t.slug}')" data-tag-slug="${t.slug}" class="px-3 py-1.5 rounded-full border border-borderDark bg-cardBg hover:border-substackOrange text-gray-300 font-medium whitespace-nowrap transition">
-                    # ${Layout.escapeHtml(t.name)}
-                </button>
-            `).join('');
+            const options = [
+                { value: '', label: I18n.t('common.filter_all') },
+                ...MockData.tags.map(t => ({ value: t.slug, label: '# ' + t.name }))
+            ];
 
-            container.innerHTML = `
-                <button onclick="filterByTag('all')" data-tag-slug="all" class="px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition">
-                    ${I18n.t('common.filter_all')}
-                </button>
-                ${tagsHTML}
-            `;
+            SearchableSelect.mount(container, {
+                options,
+                placeholder: I18n.t('common.filter_all'),
+                searchPlaceholder: I18n.t('search.input_placeholder'),
+                emptyText: I18n.t('common.no_results'),
+                value: currentSelectedTag === 'all' ? '' : currentSelectedTag,
+                onChange: (value) => filterByTag(value || 'all')
+            });
         }
 
         function filterByTag(slug) {
-            currentSelectedTag = slug;
+            currentSelectedTag = slug || 'all';
 
             // Đưa phân trang về trang 1 khi đổi bộ lọc
             const url = new URL(window.location.href);
             url.searchParams.delete('page');
             window.history.replaceState({}, '', url.toString());
 
-            // Highlight button
-            document.querySelectorAll('#tagFilterBar button').forEach(btn => {
-                if (btn.getAttribute('data-tag-slug') === slug) {
-                    btn.className = "px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition";
-                } else {
-                    btn.className = "px-3 py-1.5 rounded-full border border-borderDark bg-cardBg hover:border-substackOrange text-gray-300 font-medium whitespace-nowrap transition";
-                }
-            });
-
             renderHomeContent();
-        }
-
-        function categoryChipClass(slug) {
-            return slug === currentSelectedCategory
-                ? 'px-3 py-1.5 rounded-full border border-substackOrange bg-substackOrange text-white font-medium whitespace-nowrap transition'
-                : 'px-3 py-1.5 rounded-full border border-borderDark bg-cardBg hover:border-substackOrange text-gray-300 font-medium whitespace-nowrap transition';
         }
 
         function renderCategoryFilterChips() {
             const container = document.getElementById('categoryFilterBar');
-            if (!container || !MockData.categories) return;
+            if (!container || !MockData.categories || !window.SearchableSelect) return;
 
             const activeCategories = MockData.categories.filter(c => c.is_active);
-            container.innerHTML = `
-                <button onclick="filterByCategory('all')" data-cat-slug="all" class="${categoryChipClass('all')}">
-                    <i class="fa-solid fa-layer-group mr-1"></i>${Layout.escapeHtml(I18n.t('common.all_categories'))}
-                </button>
-                ${activeCategories.map(c => `
-                    <button onclick="filterByCategory('${c.slug}')" data-cat-slug="${c.slug}" class="${categoryChipClass(c.slug)}">
-                        ${Layout.escapeHtml(c.name)}
-                    </button>
-                `).join('')}
-            `;
+            const options = [
+                { value: '', label: I18n.t('common.all_categories') },
+                ...activeCategories.map(c => ({ value: c.slug, label: c.name }))
+            ];
+
+            SearchableSelect.mount(container, {
+                options,
+                placeholder: I18n.t('common.all_categories'),
+                searchPlaceholder: I18n.t('search.input_placeholder'),
+                emptyText: I18n.t('common.no_results'),
+                value: currentSelectedCategory === 'all' ? '' : currentSelectedCategory,
+                onChange: (value) => filterByCategory(value || 'all')
+            });
         }
 
         function filterByCategory(slug) {
-            currentSelectedCategory = slug;
+            currentSelectedCategory = slug || 'all';
 
             const url = new URL(window.location.href);
             url.searchParams.delete('page');
             window.history.replaceState({}, '', url.toString());
 
-            renderCategoryFilterChips();
             renderHomeContent();
         }
 
@@ -479,12 +461,10 @@
                     btn.classList.remove('followed', 'bg-substackOrange', 'text-white');
                     btn.classList.add('bg-cardBg', 'text-substackOrange');
                     btn.textContent = I18n.t('common.follow');
-                    Layout.showToast(I18n.t('home.unfollow_success'), 'info');
                 } else {
                     btn.classList.add('followed', 'bg-substackOrange', 'text-white');
                     btn.classList.remove('bg-cardBg', 'text-substackOrange');
                     btn.textContent = I18n.t('common.following');
-                    Layout.showToast(I18n.t('home.follow_success'), 'success');
                 }
             });
         }

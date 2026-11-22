@@ -95,6 +95,33 @@
         </main>
     </div>
 
+    <!-- Modal lý do kiểm duyệt dùng chung -->
+    <div id="reviewReasonModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-sidebarBg border border-borderDark rounded-2xl w-full max-w-lg p-6 relative shadow-2xl space-y-4">
+            <div class="flex items-start justify-between gap-3 border-b border-borderDark pb-3">
+                <div id="reviewReasonModalHeading" class="flex items-center space-x-2">
+                    <i class="fa-solid fa-pen-ruler text-amber-400"></i>
+                    <h3 id="reviewReasonModalTitle" class="font-bold text-white text-base"></h3>
+                </div>
+                <button type="button" onclick="closeReviewReasonModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <p id="reviewReasonModalDesc" class="text-xs text-gray-400 leading-relaxed"></p>
+
+            <form id="reviewReasonForm" novalidate class="space-y-4">
+                <div class="form-group">
+                    <label class="block text-xs font-bold text-gray-300 mb-1.5" for="reviewReasonInput" data-i18n="admin.review_reason_label">Lý do / ghi chú gửi tác giả (bắt buộc khi từ chối hoặc yêu cầu chỉnh sửa)</label>
+                    <textarea id="reviewReasonInput" name="reviewReason" rows="4" placeholder="Nhập căn cứ xử lý để tác giả biết hướng chỉnh sửa..." data-i18n-placeholder="admin.review_reason_placeholder" class="w-full bg-darkBg border border-borderDark rounded-xl p-3 text-xs text-white focus:outline-none focus:border-substackOrange"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-borderDark">
+                    <button type="button" onclick="closeReviewReasonModal()" class="px-4 py-2 bg-cardBg text-gray-300 text-xs rounded-xl hover:bg-borderDark" data-i18n="common.cancel">Hủy</button>
+                    <button type="submit" id="reviewReasonConfirmBtn" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl shadow"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Script & Mock Data -->
     <script src="../../assets/js/mock-data.js"></script>
     <script src="../../assets/js/i18n.js"></script>
@@ -118,12 +145,34 @@
             draft: 'bg-gray-800 border-borderDark text-gray-300'
         };
 
+        const REVIEW_ACTION_CONFIG = {
+            changes_requested: {
+                titleKey: 'admin.review_changes_title',
+                descKey: 'admin.review_changes_desc',
+                confirmKey: 'admin.review_changes_confirm',
+                toastKey: 'admin.review_changes_toast',
+                confirmClass: 'bg-amber-600 hover:bg-amber-700',
+                icon: 'fa-pen-ruler',
+                iconClass: 'text-amber-400'
+            },
+            rejected: {
+                titleKey: 'admin.review_reject_title',
+                descKey: 'admin.review_reject_desc',
+                confirmKey: 'admin.review_reject_confirm',
+                toastKey: 'admin.review_rejected_toast',
+                confirmClass: 'bg-rose-600 hover:bg-rose-700',
+                icon: 'fa-xmark',
+                iconClass: 'text-rose-400'
+            }
+        };
+
         let selectedReviewPostId = null;
         let lastPagedReviewPosts = [];
         let reviewSearch = '';
         let reviewStatus = 'pending';
         let reviewSearchTimer = null;
         let reviewReasonRules = null;
+        let pendingReviewAction = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             I18n.ready(() => {
@@ -144,6 +193,37 @@
                         selectedReviewPostId = null;
                         renderQueue(true);
                     }
+                });
+
+                Validators.attach('#reviewReasonForm', {
+                    reviewReason: reviewReasonRules
+                }, {
+                    onSubmit: (values) => {
+                        if (!pendingReviewAction) return;
+                        const config = REVIEW_ACTION_CONFIG[pendingReviewAction];
+                        const reason = (values.reviewReason || '').trim();
+                        const action = pendingReviewAction;
+                        closeReviewReasonModal();
+                        applyNegativeReview(reason, action, I18n.t(config.toastKey));
+                    }
+                });
+
+                document.addEventListener('click', (event) => {
+                    const menu = document.getElementById('reviewActionsMenu');
+                    if (!menu || menu.classList.contains('hidden')) return;
+                    if (event.target.closest('#reviewActionsToggle') || event.target.closest('#reviewActionsMenu')) return;
+                    closeReviewActionsMenu();
+                });
+
+                document.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Escape') return;
+                    closeReviewActionsMenu();
+                    const modal = document.getElementById('reviewReasonModal');
+                    if (modal && !modal.classList.contains('hidden')) closeReviewReasonModal();
+                });
+
+                document.getElementById('reviewReasonModal').addEventListener('click', (event) => {
+                    if (event.target === event.currentTarget) closeReviewReasonModal();
                 });
 
                 document.getElementById('reviewSearchInput').addEventListener('input', (e) => {
@@ -364,9 +444,26 @@
         }
 
         function selectReviewPost(postId) {
+            const changed = selectedReviewPostId !== postId;
             selectedReviewPostId = postId;
+            // Giữ nguyên vị trí cuộn của danh sách hàng đợi khi đổi bài xem trước
+            const listEl = document.getElementById('reviewQueueList');
+            const queueScrollTop = listEl ? listEl.scrollTop : 0;
             renderReviewListItems();
+            if (listEl) listEl.scrollTop = queueScrollTop;
             renderPreviewPanel(postId);
+            if (changed) resetPreviewScroll();
+        }
+
+        function resetPreviewScroll() {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            const panel = document.getElementById('reviewPreviewPanel');
+            if (!panel) return;
+            panel.style.scrollMarginTop = '3.5rem';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function renderPreviewPanel(postId) {
@@ -400,6 +497,11 @@
             const statusClass = REVIEW_STATUS_CLASSES[post.status] || REVIEW_STATUS_CLASSES.draft;
             const statusLabel = I18n.t(REVIEW_STATUS_KEYS[post.status] || 'admin.review_status_draft');
             const canReview = post.status === 'pending';
+            const translatedLanguages = (Array.isArray(post.translated_language_ids)
+                ? post.translated_language_ids
+                : (post.translated_language_id ? [post.translated_language_id] : []))
+                .map(id => MockData.getLanguageById(parseInt(id, 10)))
+                .filter(Boolean);
 
             panel.innerHTML = `
                 <article class="p-5 sm:p-6 space-y-5">
@@ -408,7 +510,30 @@
                             <span class="px-2.5 py-1 rounded-lg border text-[11px] font-bold ${statusClass}">${Layout.escapeHtml(statusLabel)}</span>
                             <span class="text-[11px] text-gray-500">${Layout.escapeHtml(I18n.t('admin.review_submitted_at', { date: Layout.formatDate(post.created_at) }))}</span>
                         </div>
-                        <span class="text-[11px] text-gray-500">#${Layout.escapeHtml(post.id)}</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[11px] text-gray-500">#${Layout.escapeHtml(post.id)}</span>
+                            ${canReview ? `
+                                <div class="relative">
+                                    <button type="button" id="reviewActionsToggle" onclick="toggleReviewActionsMenu(event)" aria-haspopup="menu" aria-expanded="false" aria-controls="reviewActionsMenu" aria-label="${Layout.escapeHtml(I18n.t('common.actions'))}" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-borderDark transition">
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
+                                    <div id="reviewActionsMenu" role="menu" class="hidden absolute right-0 top-full mt-1 w-56 bg-cardBg border border-borderDark rounded-xl shadow-2xl z-30 overflow-hidden">
+                                        <button type="button" role="menuitem" onclick="closeReviewActionsMenu(); openReviewReasonModal('changes_requested')" class="w-full text-left px-3.5 py-2.5 flex items-center space-x-2 text-amber-300 hover:bg-borderDark transition">
+                                            <i class="fa-solid fa-pen-ruler w-4 text-center"></i>
+                                            <span data-i18n="admin.review_request_changes">Yêu cầu chỉnh sửa</span>
+                                        </button>
+                                        <button type="button" role="menuitem" onclick="closeReviewActionsMenu(); openReviewReasonModal('rejected')" class="w-full text-left px-3.5 py-2.5 flex items-center space-x-2 text-rose-300 hover:bg-borderDark transition">
+                                            <i class="fa-solid fa-xmark w-4 text-center"></i>
+                                            <span data-i18n="admin.review_reject">Từ chối</span>
+                                        </button>
+                                        <button type="button" role="menuitem" onclick="closeReviewActionsMenu(); approveSelectedPost()" class="w-full text-left px-3.5 py-2.5 flex items-center space-x-2 text-emerald-300 hover:bg-borderDark transition">
+                                            <i class="fa-solid fa-check w-4 text-center"></i>
+                                            <span data-i18n="admin.review_approve">Phê duyệt xuất bản</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
 
                     <h1 class="text-xl sm:text-2xl font-extrabold text-white leading-tight">${Layout.escapeHtml(post.title)}</h1>
@@ -421,6 +546,11 @@
                         </span>
                         ${category ? `<span class="bg-substackOrange/15 border border-substackOrange/40 text-substackOrange px-2.5 py-1 rounded-full font-semibold"><i class="fa-regular fa-folder-open mr-1"></i>${Layout.escapeHtml(category.name)}</span>` : ''}
                         ${language ? `<span class="bg-darkBg border border-borderDark text-gray-300 px-2.5 py-1 rounded-full"><i class="fa-solid fa-language mr-1"></i>${Layout.escapeHtml(language.name)}</span>` : ''}
+                        ${translatedLanguages.map(l => `
+                            <span class="bg-substackOrange/10 border border-substackOrange/30 text-substackOrange px-2.5 py-1 rounded-full">
+                                <i class="fa-solid fa-language mr-1"></i>${Layout.escapeHtml(l.name)}
+                            </span>
+                        `).join('')}
                     </div>
 
                     ${post.cover_image ? `
@@ -447,52 +577,63 @@
                         <div class="post-content text-sm text-gray-200">${Sanitize.html(post.content_html || '')}</div>
                     </div>
 
-                    <div class="border-t border-borderDark pt-4 space-y-3">
-                        <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400" data-i18n="admin.review_actions_title">Thao tác kiểm duyệt</h2>
-                        ${canReview ? `
-                            <div class="form-group">
-                                <label class="block text-[11px] font-bold text-gray-300 mb-1.5" for="reviewReason" data-i18n="admin.review_reason_label">Lý do / ghi chú gửi tác giả (bắt buộc khi từ chối hoặc yêu cầu chỉnh sửa)</label>
-                                <textarea id="reviewReason" name="reviewReason" rows="3" placeholder="Nhập căn cứ xử lý để tác giả biết hướng chỉnh sửa..." data-i18n-placeholder="admin.review_reason_placeholder" oninput="clearReviewReasonError()" class="w-full bg-darkBg border border-borderDark rounded-xl p-3 text-xs text-white focus:outline-none focus:border-substackOrange"></textarea>
-                            </div>
-                            <div class="flex flex-wrap items-center justify-end gap-2">
-                                <button type="button" onclick="requestChangesSelectedPost()" class="px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-semibold transition inline-flex items-center space-x-1.5">
-                                    <i class="fa-solid fa-pen-ruler"></i>
-                                    <span data-i18n="admin.review_request_changes">Yêu cầu chỉnh sửa</span>
-                                </button>
-                                <button type="button" onclick="rejectSelectedPost()" class="px-4 py-2 bg-cardBg hover:bg-rose-950/60 border border-borderDark text-gray-300 hover:text-rose-400 rounded-xl text-xs font-semibold transition inline-flex items-center space-x-1.5">
-                                    <i class="fa-solid fa-xmark"></i>
-                                    <span data-i18n="admin.review_reject">Từ chối</span>
-                                </button>
-                                <button type="button" onclick="approveSelectedPost()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow transition inline-flex items-center space-x-1.5">
-                                    <i class="fa-solid fa-check"></i>
-                                    <span data-i18n="admin.review_approve">Phê duyệt xuất bản</span>
-                                </button>
-                            </div>
-                        ` : `
-                            <p class="text-xs text-gray-400 italic" data-i18n="admin.review_not_pending">Bài viết đã được xử lý. Chuyển bộ lọc sang "Chờ duyệt" để tiếp tục kiểm duyệt các bài mới.</p>
-                        `}
-                    </div>
+                    ${canReview ? '' : `
+                        <p class="text-xs text-gray-400 italic border-t border-borderDark pt-4" data-i18n="admin.review_not_pending">Bài viết đã được xử lý. Chuyển bộ lọc sang "Chờ duyệt" để tiếp tục kiểm duyệt các bài mới.</p>
+                    `}
                 </article>
             `;
             I18n.applyI18n(panel);
         }
 
-        function clearReviewReasonError() {
-            const reasonEl = document.getElementById('reviewReason');
-            if (!reasonEl) return;
-            Validators.clearError(reasonEl);
+        function toggleReviewActionsMenu(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('reviewActionsMenu');
+            const toggle = document.getElementById('reviewActionsToggle');
+            if (!menu) return;
+            const willOpen = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !willOpen);
+            if (toggle) toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
         }
 
-        function getReviewReasonOrError() {
-            const reasonEl = document.getElementById('reviewReason');
-            if (!reasonEl) return null;
-            const error = Validators.validateField(reasonEl, reviewReasonRules);
-            if (error) {
-                reasonEl.focus();
-                reasonEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return null;
-            }
-            return (reasonEl.value || '').trim();
+        function closeReviewActionsMenu() {
+            const menu = document.getElementById('reviewActionsMenu');
+            const toggle = document.getElementById('reviewActionsToggle');
+            if (menu) menu.classList.add('hidden');
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        function openReviewReasonModal(action) {
+            const config = REVIEW_ACTION_CONFIG[action];
+            if (!config) return;
+            pendingReviewAction = action;
+
+            const modal = document.getElementById('reviewReasonModal');
+            const heading = document.getElementById('reviewReasonModalHeading');
+            const title = document.getElementById('reviewReasonModalTitle');
+            const desc = document.getElementById('reviewReasonModalDesc');
+            const confirmBtn = document.getElementById('reviewReasonConfirmBtn');
+            const input = document.getElementById('reviewReasonInput');
+
+            title.textContent = I18n.t(config.titleKey);
+            desc.textContent = I18n.t(config.descKey);
+            confirmBtn.textContent = I18n.t(config.confirmKey);
+            confirmBtn.className = `px-5 py-2 ${config.confirmClass} text-white text-xs font-semibold rounded-xl shadow`;
+            const icon = heading ? heading.querySelector('i') : null;
+            if (icon) icon.className = `fa-solid ${config.icon} ${config.iconClass}`;
+
+            input.value = '';
+            Validators.clearError(input);
+
+            modal.classList.remove('hidden');
+            setTimeout(() => input.focus(), 0);
+        }
+
+        function closeReviewReasonModal() {
+            const modal = document.getElementById('reviewReasonModal');
+            const input = document.getElementById('reviewReasonInput');
+            if (modal) modal.classList.add('hidden');
+            if (input) Validators.clearError(input);
+            pendingReviewAction = null;
         }
 
         function getSelectedPost() {
@@ -514,18 +655,6 @@
             afterReviewAction();
         }
 
-        function rejectSelectedPost() {
-            const reason = getReviewReasonOrError();
-            if (!reason) return;
-            applyNegativeReview(reason, 'rejected', I18n.t('admin.review_rejected_toast'));
-        }
-
-        function requestChangesSelectedPost() {
-            const reason = getReviewReasonOrError();
-            if (!reason) return;
-            applyNegativeReview(reason, 'changes_requested', I18n.t('admin.review_changes_toast'));
-        }
-
         function applyNegativeReview(reason, action, toastMessage) {
             const post = getSelectedPost();
             if (!post) return;
@@ -542,8 +671,10 @@
 
         function afterReviewAction() {
             selectedReviewPostId = null;
+            closeReviewActionsMenu();
             renderQueue(false);
             Layout.renderAdminSidebar('review', 'adminSidebar');
+            resetPreviewScroll();
         }
     </script>
 </body>
